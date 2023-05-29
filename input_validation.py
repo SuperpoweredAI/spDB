@@ -56,10 +56,12 @@ def validate_add(vectors, text, vector_size):
     return True, "Success"
 
 
-def validate_query(query_vector):
+def validate_query(query_vector, vector_size):
 
     # Make sure the data is the correct type (numpy array)
     if not isinstance(query_vector, np.ndarray):
         return False, "Query vectors are not the correct type. Expected type: numpy array. Actual type: " + str(type(query_vector))
+    
+    # Make sure the query vector is the correct size. The 
 
     return True, "Success"

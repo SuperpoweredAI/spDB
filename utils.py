@@ -35,3 +35,8 @@ def create_faiss_index_ids(max_id, num_new_vectors):
     # The IDs start at max_id + 1 and go up to max_id + num_new_vectors
     new_ids = range(max_id + 1, max_id + num_new_vectors + 1)
     return new_ids
+
+def get_training_memory_usage(dimension, num_vectors):
+    # 1M 768 dimension vectors uses ~10GB of memory
+    memory_usage = num_vectors * dimension * 4 * 3 # 4 bytes per float, with a 3x multiplier for overhead
+    return memory_usage
