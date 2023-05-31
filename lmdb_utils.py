@@ -34,3 +34,26 @@ def get_reranked_text(save_path, name, reranked_I, position_to_id_map):
             reranked_text.append(value)
     env.close()
     return reranked_text
+
+def get_lmdb_index_ids(save_path, name):
+    env = lmdb.open(f'{save_path}{name}_full_vectors')
+    # Get the ids from the LMDB
+    with env.begin() as txn:
+        # decode the keys from bytes to strings
+        keys = [key.decode('utf-8') for key in txn.cursor().iternext(keys=True, values=False)]
+    
+    env.close()
+    return keys
+
+def get_lmdb_vectors_by_ids(save_path, name, ids):
+    env = lmdb.open(f'{save_path}{name}_full_vectors')
+    # Get the ids from the LMDB
+    with env.begin() as txn:
+        vectors = []
+        for id in ids:
+            value = txn.get(str(id).encode('utf-8'))
+            value = np.frombuffer(value, dtype=np.float32)
+            vectors.append(value)
+    
+    env.close()
+    return vectors

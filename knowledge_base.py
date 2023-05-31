@@ -4,9 +4,10 @@ from faiss.contrib.exhaustive_search import knn
 import numpy as np
 import lmdb
 
-import utils # get_num_clusters, get_n_probe, create_faiss_index_ids
+import utils
 import lmdb_utils
 import input_validation
+from custom_k_means_clustering import train_ivf_index_with_2level
 
 class KnowledgeBase:
     def __init__(self, name, save_path=None):
@@ -28,26 +29,31 @@ class KnowledgeBase:
 
     def save(self):
         # save faiss index and delete (so it doesn't get pickled)
-        faiss.write_index(self.faiss_index, f'{self.save_path}{self.name}.index')
         tmp = self.faiss_index
-        self.faiss_index = None
+        if self.faiss_index is not None:
+            faiss.write_index(self.faiss_index, f'{self.save_path}{self.name}.index')
+            self.faiss_index = None
 
         # save object to pickle file
         pickle.dump(self, open(f'{self.save_path}{self.name}.pickle', 'wb'))
 
         self.faiss_index = tmp
+    
+    def train_with_clustering(self, pca: int = 256, pq_bytes: int = 32, opq_dimension: int = 128):
 
-    def train(self, data: np.ndarray, pca: int = 256, pq_bytes: int = 32, opq_dimension: int = 128):
+        # Load the vectors from the LMDB
+        vectors = lmdb_utils.read_vectors_from_lmdb(f'{self.save_path}{self.name}_full_vectors')
+
         # Validate the inputs
-        is_valid, reason = input_validation.validate_train(data, pca, pq_bytes, opq_dimension)
+        is_valid, reason = input_validation.validate_train(vectors, pca, pq_bytes, opq_dimension)
         if not is_valid:
             raise ValueError(reason)
-        
+
         # Get the parameters for training the index
-        num_clusters = utils.get_num_clusters(data)
+        num_clusters = utils.get_num_clusters(vectors)
         index_factory_parameters = [f'PCA{pca}', f'OPQ{pq_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{pq_bytes}']
         index_factory_parameter_string = ','.join(index_factory_parameters)
-        dimension = data.shape[1]
+        dimension = vectors.shape[1]
 
         # Define the dimension of the vectors
         self.vector_size = dimension
@@ -57,7 +63,36 @@ class KnowledgeBase:
 
         # create the index
         index = faiss.index_factory(dimension, index_factory_parameter_string)
-        index.train(data)
+        self.faiss_index = index
+
+        #train_ivf_index_with_2level(index, self.vector_size, self.save_path, self.name)
+
+
+    def train(self, pca: int = 256, pq_bytes: int = 32, opq_dimension: int = 128):
+
+        # Load the vectors from the LMDB
+        vectors = lmdb_utils.read_vectors_from_lmdb(f'{self.save_path}{self.name}_full_vectors')
+
+        # Validate the inputs
+        is_valid, reason = input_validation.validate_train(vectors, pca, pq_bytes, opq_dimension)
+        if not is_valid:
+            raise ValueError(reason)
+        
+        # Get the parameters for training the index
+        num_clusters = utils.get_num_clusters(vectors)
+        index_factory_parameters = [f'PCA{pca}', f'OPQ{pq_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{pq_bytes}']
+        index_factory_parameter_string = ','.join(index_factory_parameters)
+        dimension = vectors.shape[1]
+
+        # Define the dimension of the vectors
+        self.vector_size = dimension
+
+        # TODO: Check the size of the data to make sure it's not too big for the machine
+        # If it is, then we will train on a random subset of the data
+
+        # create the index
+        index = faiss.index_factory(dimension, index_factory_parameter_string)
+        index.train(vectors)
 
         # Set the n_probe parameter (I think it makes sense here since n_probe is dependent on num_clusters)
         n_probe = utils.get_n_probe(num_clusters)
@@ -77,7 +112,7 @@ class KnowledgeBase:
 
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
-        self.faiss_index.add_with_ids(vectors, ids)
+        #self.faiss_index.add_with_ids(vectors, ids)
 
         # Add the vectors to the LMDB
         env = lmdb.open(f'{self.save_path}{self.name}_full_vectors', map_size=1099511627776) # 1TB
@@ -91,6 +126,7 @@ class KnowledgeBase:
             for i, t in enumerate(text):
                 txn.put(str(ids[i]).encode('utf-8'), t.encode('utf-8'))
         
+        self.vector_size = vectors.shape[1]
         self.save()
 
     def remove(self, vector_ids):
@@ -135,6 +171,10 @@ def load_knowledge_base(name, save_path):
     kb = pickle.load(open(f'{save_path}{name}.pickle', 'rb'))
 
     # load faiss index from save path
-    kb.faiss_index = faiss.read_index(f'{kb.save_path}{name}.index')
+    try:
+        index = faiss.read_index(f'{kb.save_path}{name}.index')
+    except:
+        index = None
+    kb.faiss_index = index
 
     return kb

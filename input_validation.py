@@ -42,7 +42,7 @@ def validate_train(data, pca, pq_bytes, opq_dimension):
 
 def validate_add(vectors, text, vector_size):
     # Double check that the vector is the right size first
-    if vectors.shape[1] != vector_size:
+    if vector_size != None and vectors.shape[1] != vector_size:
         return False, "Vector is not the correct size. Expected size: " + str(vector_size) + " Actual size: " + str(vectors.shape[1])
         
     # Make sure the data is the correct type (probably a numpy array)
