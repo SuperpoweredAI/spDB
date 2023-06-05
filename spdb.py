@@ -2,7 +2,6 @@ import pickle
 import faiss
 from faiss.contrib.exhaustive_search import knn
 import numpy as np
-import lmdb
 
 import utils
 import lmdb_utils
@@ -18,13 +17,7 @@ class spDB:
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
 
-        # Create the LMDB for the vectors
-        env = lmdb.open(f'{save_path}{self.name}_full_vectors')
-        env.close()
-
-        # Create the LMDB for the text
-        env = lmdb.open(f'{save_path}{self.name}_full_text')
-        env.close()
+        lmdb_utils.create_lmdb(save_path, name)
 
     def save(self):
         # save faiss index and delete (so it doesn't get pickled)
@@ -134,17 +127,9 @@ class spDB:
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
-        # Add the vectors to the LMDB
-        env = lmdb.open(f'{self.save_path}{self.name}_full_vectors', map_size=1099511627776) # 1TB
-        with env.begin(write=True) as txn:
-            for i, vector in enumerate(vectors):
-                txn.put(str(ids[i]).encode('utf-8'), vector.tobytes())
+        lmdb_utils.add_vectors_to_lmdb(self.save_path, self.name, vectors, ids)
 
-        # Add the text to LMDB
-        env = lmdb.open(f'{self.save_path}{self.name}_full_text', map_size=1099511627776) # 1TB
-        with env.begin(write=True) as txn:
-            for i, t in enumerate(text):
-                txn.put(str(ids[i]).encode('utf-8'), t.encode('utf-8'))
+        lmdb_utils.add_text_to_lmdb(self.save_path, self.name, text, ids)
         
         # If the index is not trained, don't add the vectors to the index
         if self.faiss_index is not None:

@@ -1,6 +1,36 @@
 import numpy as np
 import lmdb
 
+
+def create_lmdb(save_path, name):
+    
+    # Create the LMDB for the vectors
+    env = lmdb.open(f'{save_path}{name}_full_vectors')
+    env.close()
+
+    # Create the LMDB for the text
+    env = lmdb.open(f'{save_path}{name}_full_text')
+    env.close()
+
+
+def add_vectors_to_lmdb(save_path, name, vectors, ids):
+    
+    # Add the vectors to the LMDB
+    env = lmdb.open(f'{save_path}{name}_full_vectors', map_size=1099511627776) # 1TB
+    with env.begin(write=True) as txn:
+        for i, vector in enumerate(vectors):
+            txn.put(str(ids[i]).encode('utf-8'), vector.tobytes())
+
+
+def add_text_to_lmdb(save_path, name, text, ids):
+    
+    # Add the text to LMDB
+    env = lmdb.open(f'{save_path}{name}_full_text', map_size=1099511627776) # 1TB
+    with env.begin(write=True) as txn:
+        for i, t in enumerate(text):
+            txn.put(str(ids[i]).encode('utf-8'), t.encode('utf-8'))
+
+
 def get_ranked_vectors(save_path, name, I):
 
     # query lmdb for the vectors
