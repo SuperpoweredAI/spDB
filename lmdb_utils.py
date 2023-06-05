@@ -1,6 +1,5 @@
 import numpy as np
 import lmdb
-import time
 
 def get_ranked_vectors(save_path, name, I):
 
@@ -59,29 +58,3 @@ def get_lmdb_vectors_by_ids(save_path, name, ids):
     env.close()
     vectors = np.array(vectors)
     return vectors
-
-
-def get_all_lmbd_items(save_path, name, num_per_batch):
-    env = lmdb.open(f'{save_path}{name}_full_vectors', readonly=True)
-    with env.begin() as txn:
-        # Create a new cursor
-        cursor = txn.cursor()
-
-        # Initialize an empty batch
-        batch = []
-
-        # Iterate through the key-value pairs in the database
-        start_time = time.time()
-        for key, value in cursor:
-            # Add the vector to the current batch
-            batch.append(value)
-
-            # If the batch is full, process it and start a new batch
-            if len(batch) == num_per_batch:
-                print ("resetting batch", len(batch))
-                print (f"Time taken: {time.time() - start_time}")
-                batch = []
-                start_time = time.time()
-
-    env.close()
-

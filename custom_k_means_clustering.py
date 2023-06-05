@@ -2,10 +2,7 @@ import faiss
 import numpy as np
 import time
 import lmdb_utils
-from utils import get_n_probe
-
-def print_nop(*arg, **kwargs):
-    pass
+import utils
 
 
 def assign_to_centroids(batches, km, save_path, name, all_vector_transforms):
@@ -122,7 +119,7 @@ def handle_pre_transforms(index, vector_dimension, save_path, name):
     # handle PreTransforms
 
     # index is the faiss index
-    # vector_size is the dimensionality of the vectors
+    # vector_dimension is the dimensionality of the vectors
 
     start_time = time.time()
     random_sub_sample, _ = get_random_vectors(vector_dimension*100, save_path, name)
@@ -174,16 +171,16 @@ def train_ivf_index_with_2level(index, num_total_clusters, vector_dimension, sav
     
     # Get all of the vectors from the knowledge base and add them to the index (in batches)
     start_time = time.time()
+    index.index = ivf_index
     for i in range(len(batches)):
         batch_ids = batches[i]
         data_subset = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batch_ids)
-        data_subset = apply_pre_transforms(data_subset, all_vector_transforms)
-        ivf_index.add_with_ids(data_subset, batch_ids)
+        index.add_with_ids(data_subset, batch_ids)
     print ("num per batch", len(batch_ids))
     print ("time taken to add vectors to index", time.time() - start_time)
     
     # Set the n_probe parameter for the index
-    n_probe = get_n_probe(ivf_index.nlist)
+    n_probe = utils.get_n_probe(ivf_index.nlist)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
     
     return index, ivf_index

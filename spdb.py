@@ -7,18 +7,16 @@ import lmdb
 import utils
 import lmdb_utils
 import input_validation
-from custom_k_means_clustering import train_ivf_index_with_2level
+import custom_k_means_clustering
 
-class KnowledgeBase:
-    def __init__(self, name, save_path=None):
+class spDB:
+    def __init__(self, name, save_path = None, vector_dimension = None, max_memory_usage = 4 * 1024 * 1024 * 1024):
         self.name = name
         self.save_path = save_path
         self.faiss_index = None
-        #self.memmap = None # Not using this for now
-        self.vector_dimension = None
-        #self.embedding_function = None # Also not using this for now
+        self.vector_dimension = vector_dimension
         self.max_id = -1
-        self.max_memory_usage = 4 * 1024 * 1024 * 1024 # 4 GB
+        self.max_memory_usage = max_memory_usage
 
         # Create the LMDB for the vectors
         env = lmdb.open(f'{save_path}{self.name}_full_vectors')
@@ -40,7 +38,7 @@ class KnowledgeBase:
 
         self.faiss_index = tmp
     
-    def train_with_2_level_clustering(self, pca: int = 256, pq_bytes: int = 32, opq_dimension: int = 128):
+    def train_with_2_level_clustering(self, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32):
 
         # TODO: Figure out a better way of getting the number of vectors
         vector_ids = lmdb_utils.get_lmdb_index_ids(self.save_path, self.name)
@@ -48,13 +46,13 @@ class KnowledgeBase:
         print ("num_vectors", num_vectors)
 
         # Validate the inputs
-        is_valid, reason = input_validation.validate_train(self.vector_dimension, pca, pq_bytes, opq_dimension)
+        is_valid, reason = input_validation.validate_train(self.vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension)
         if not is_valid:
             raise ValueError(reason)
 
         # Get the parameters for training the index
         num_clusters = utils.get_num_clusters(num_vectors)
-        index_factory_parameters = [f'PCA{pca}', f'OPQ{pq_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{pq_bytes}']
+        index_factory_parameters = [f'PCA{pca_dimension}', f'OPQ{compressed_vector_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{compressed_vector_bytes}']
         index_factory_parameter_string = ','.join(index_factory_parameters)
 
         # create the index
@@ -62,8 +60,8 @@ class KnowledgeBase:
         self.faiss_index = index
 
         # Train the index
-        index, ivf_index = train_ivf_index_with_2level(self.faiss_index, num_clusters, self.vector_dimension, self.save_path, self.name)
-                    
+        index, ivf_index = custom_k_means_clustering.train_ivf_index_with_2level(self.faiss_index, num_clusters, self.vector_dimension, self.save_path, self.name)
+        
         self.faiss_index = index
         self.faiss_index.index = ivf_index
         print ("done training index")
@@ -71,20 +69,20 @@ class KnowledgeBase:
         self.save()
 
 
-    def train(self, pca: int = 256, pq_bytes: int = 32, opq_dimension: int = 128):
+    def train(self, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32):
 
         # Load the vectors from the LMDB
         vector_ids = lmdb_utils.get_lmdb_index_ids(self.save_path, self.name)
         num_vectors = len(vector_ids)
 
         # Validate the inputs
-        is_valid, reason = input_validation.validate_train(self.vector_dimension, pca, pq_bytes, opq_dimension)
+        is_valid, reason = input_validation.validate_train(self.vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension)
         if not is_valid:
             raise ValueError(reason)
         
         # Get the parameters for training the index
         num_clusters = utils.get_num_clusters(num_vectors)
-        index_factory_parameters = [f'PCA{pca}', f'OPQ{pq_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{pq_bytes}']
+        index_factory_parameters = [f'PCA{pca_dimension}', f'OPQ{compressed_vector_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{compressed_vector_bytes}']
         index_factory_parameter_string = ','.join(index_factory_parameters)
         print (index_factory_parameter_string)
 
@@ -176,7 +174,6 @@ class KnowledgeBase:
 
         # query faiss index
         _, I = self.faiss_index.search(query_vector, 500)
-        print (I.shape)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(self.save_path, self.name, I)
         
@@ -187,11 +184,6 @@ class KnowledgeBase:
     
         return reranked_text
 
-
-def create_knowledge_base(name):
-    kb = KnowledgeBase(name)
-
-    return kb
 
 def load_knowledge_base(name, save_path):
     # load KnowledgeBase object from pickle file
