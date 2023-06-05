@@ -1,14 +1,7 @@
 import numpy as np
 
 
-def validate_train(data, pca, pq_bytes, opq_dimension):
-    # Make sure the data is a numpy array
-    if not isinstance(data, np.ndarray):
-        return False, "Data is not the correct type. Expected type: numpy array. Actual type: " + str(type(data))
-    
-    # Make sure the data has at least 1 row
-    if data.shape[0] < 1:
-        return False, "Data has no rows. Expected at least 1 row."
+def validate_train(dimension, pca, pq_bytes, opq_dimension):
 
     # Make sure pca, pq_bytes, and opq_dimension are integers and are all positive
     if not isinstance(pca, int):
@@ -26,8 +19,8 @@ def validate_train(data, pca, pq_bytes, opq_dimension):
         return False, "OPQ is not positive. OPQ: " + str(opq_dimension)
 
     # Make sure PCA is less than the number of columns in the data
-    if pca > data.shape[1]:
-        return False, "PCA is larger than the number of columns in the data. Number of columns in data: " + str(data.shape[1]) + " PCA: " + str(pca)
+    if pca > dimension:
+        return False, "PCA is larger than the number of columns in the data. Number of columns in data: " + str(dimension) + " PCA: " + str(pca)
     
     # OPQ has to be less than or equal to PCA
     if opq_dimension > pca:

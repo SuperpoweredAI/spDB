@@ -1,9 +1,8 @@
 import numpy as np
 
-def get_num_clusters(data):
+def get_num_clusters(num_vectors):
     # Get the number of clusters to use for the IVF index, based on the number of vectors
     scaling_factor = 0.2
-    num_vectors = data.shape[0]
     num_clusters = int((num_vectors**0.75) * scaling_factor)
     return num_clusters
 
@@ -40,3 +39,9 @@ def get_training_memory_usage(dimension, num_vectors):
     # 1M 768 dimension vectors uses ~10GB of memory
     memory_usage = num_vectors * dimension * 4 * 3 # 4 bytes per float, with a 3x multiplier for overhead
     return memory_usage
+
+def get_num_batches(num_vectors, dimension, max_memory_usage):
+    memory_usage = num_vectors * dimension * 4
+    # We don't really need to push memory requirements here, so we'll just use 1/4 of the max memory usage
+    num_batches = int(np.ceil(memory_usage / (max_memory_usage / 4)))
+    return num_batches
