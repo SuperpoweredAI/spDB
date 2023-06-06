@@ -13,6 +13,10 @@ def validate_database_name(name: str):
 
 def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_bytes: int, opq_dimension: int):
 
+    # If the vector dimension is not set, that means there are no vectors in the database
+    if vector_dimension == None:
+        return False, "No vectors have been added to the database"
+
     # Make sure pca, pq_bytes, and opq_dimension are integers and are all positive
     if not isinstance(pca_dimension, int):
         return False, "PCA is not the correct type. Expected type: int. Actual type: " + str(type(pca_dimension))
@@ -58,6 +62,26 @@ def validate_add(vectors: np.ndarray, text: list, vector_dimension: int):
         return False, "Number of vectors does not match number of text items. Number of vectors: " + str(vectors.shape[0]) + " Number of text items: " + str(len(text))
 
     return True, "Success"
+
+
+def validate_remove(ids: np.ndarray):
+
+    # Make sure the data is the correct type (numpy array)
+    if not isinstance(ids, np.ndarray):
+        return False, "IDs are not the correct type. Expected type: numpy array. Actual type: " + str(type(ids))
+    
+    # Make sure the IDs are integers
+    if not np.issubdtype(ids.dtype, np.integer):
+        return False, "IDs are not integers. IDs: " + str(ids.dtype)
+    
+    # Make sure the IDs are positive
+    if np.any(ids < 0):
+        # This won't actually cause an error, but it should never happen so we want to warn the user
+        return False, "IDs are not positive. IDs: " + str(ids)
+    
+    # Make sure the data is a 1D array
+    if len(ids.shape) != 1:
+        return False, "IDs are not 1D. IDs: " + str(ids.shape)
 
 
 def validate_query(query_vector: np.ndarray, vector_dimension: int):

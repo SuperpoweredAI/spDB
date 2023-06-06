@@ -28,8 +28,7 @@ class spDB:
         # save faiss index and delete (so it doesn't get pickled)
         tmp = self.faiss_index
         if self.faiss_index is not None:
-            faiss.write_index(self.faiss_index,
-                              f'{self.save_path}{self.name}.index')
+            faiss.write_index(self.faiss_index, f'{self.save_path}{self.name}.index')
             self.faiss_index = None
 
         # save object to pickle file
@@ -88,11 +87,29 @@ class spDB:
         self._vector_dimension = vectors.shape[1]
         self.save()
 
-    def remove(self, vector_ids):
-        # remove vector from faiss index
-        # remove text from LMDB
+    def remove(self, vector_ids: np.ndarray):
+        # vector_ids can be a list or a 1D numpy array. If it is a list, it will be converted to a numpy array
+        # because faiss.remove_ids requires a numpy array
 
-        pass
+        if isinstance(vector_ids, list):
+            vector_ids = np.array(vector_ids)
+
+        # Validate the inputs
+        is_valid, reason = input_validation.validate_remove(vector_ids)
+        if not is_valid:
+            raise ValueError(reason)
+
+        # Remove the vectors from the faiss index (has to be done first)
+        self.faiss_index.remove_ids(vector_ids)
+        # Save here in case something fails in the LMDB removal.
+        # We can't have ids in the faiss index that don't exist in the LMDB
+        self.save()
+
+        # remove vectors from LMDB
+        lmdb_utils.remove_vectors_from_lmdb(self.save_path, self.name, vector_ids)
+
+        # remove text from LMDB
+        lmdb_utils.remove_text_from_lmdb(self.save_path, self.name, vector_ids)
 
     def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100):
 
