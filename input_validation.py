@@ -2,13 +2,16 @@ import numpy as np
 import re
 
 
-def validate_name(name):
+def validate_database_name(name: str):
     # Make sure the DB name is valid. It must be valid for a file name
     name_regex = r'^[a-zA-Z0-9_ -]+$'
     if not re.match(name_regex, name):
         return False, "Name is not valid. Name: " + name
+    else:
+        return True, ""
 
-def validate_train(vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension):
+
+def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_bytes: int, opq_dimension: int):
 
     # Make sure pca, pq_bytes, and opq_dimension are integers and are all positive
     if not isinstance(pca_dimension, int):
@@ -40,7 +43,7 @@ def validate_train(vector_dimension, pca_dimension, compressed_vector_bytes, opq
     return True, "Success"
 
 
-def validate_add(vectors, text, vector_dimension):
+def validate_add(vectors: np.ndarray, text: list, vector_dimension: int):
         
     # Make sure the data is the correct type (probably a numpy array)
     if not isinstance(vectors, np.ndarray):
@@ -57,12 +60,14 @@ def validate_add(vectors, text, vector_dimension):
     return True, "Success"
 
 
-def validate_query(query_vector, vector_dimension):
+def validate_query(query_vector: np.ndarray, vector_dimension: int):
 
     # Make sure the data is the correct type (numpy array)
     if not isinstance(query_vector, np.ndarray):
         return False, "Query vectors are not the correct type. Expected type: numpy array. Actual type: " + str(type(query_vector))
     
     # Make sure the query vector is the correct size. The 
+    if vector_dimension != None and query_vector.shape[1] != vector_dimension:
+        return False, "Query vector is not the correct size. Expected size: " + str(vector_dimension) + " Actual size: " + str(query_vector.shape[1])
 
     return True, "Success"
