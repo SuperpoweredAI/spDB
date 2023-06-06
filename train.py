@@ -6,7 +6,7 @@ import lmdb_utils
 import utils
 
 
-def train_with_two_level_clustering(save_path, name, vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, max_memory_usage):
+def train_with_two_level_clustering(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int) -> faiss.IndexPreTransform:
 
     # TODO: Figure out a better way of getting the number of vectors
     vector_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
@@ -38,7 +38,7 @@ def train_with_two_level_clustering(save_path, name, vector_dimension, pca_dimen
     return index
 
 
-def train_with_subsampling(save_path, name, vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, max_memory_usage):
+def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int) -> faiss.IndexPreTransform:
 
     # Load the vectors from the LMDB
     vector_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
@@ -76,20 +76,6 @@ def train_with_subsampling(save_path, name, vector_dimension, pca_dimension, opq
     index = add_vectors_to_faiss(
         save_path, name, index, vector_ids, num_vectors, vector_dimension, max_memory_usage)
 
-    """# Add all of the vectors to the index. We need to know the number of batches to do this in
-    num_batches = utils.get_num_batches(
-        num_vectors, vector_dimension, max_memory_usage)
-    # Calculate the number of vectors per batch
-    num_per_batch = np.ceil(num_vectors / num_batches).astype(int)
-    for i in range(num_batches):
-        # Get the batch ids (based off the number of batches and the current i)
-        batch_ids = vector_ids[i *
-                               num_per_batch: (min((i + 1) * num_per_batch, num_vectors))]
-        vectors = lmdb_utils.get_lmdb_vectors_by_ids(
-            save_path, name, batch_ids)
-        # Add the vectors to the index
-        index.add_with_ids(vectors, batch_ids)"""
-
     # Set the n_probe parameter (I think it makes sense here since n_probe is dependent on num_clusters)
     n_probe = utils.get_n_probe(num_clusters)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
@@ -97,7 +83,7 @@ def train_with_subsampling(save_path, name, vector_dimension, pca_dimension, opq
     return index
 
 
-def add_vectors_to_faiss(save_path, name, index, vector_ids, num_vectors, vector_dimension, max_memory_usage):
+def add_vectors_to_faiss(save_path: str, name: str, index: faiss.IndexPreTransform, vector_ids: list, num_vectors: int, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:
 
     # Add all of the vectors to the index. We need to know the number of batches to do this in
     num_batches = utils.get_num_batches(

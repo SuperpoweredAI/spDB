@@ -2,12 +2,12 @@ import faiss
 import numpy as np
 import time
 import lmdb_utils
-import utils
 
 
-def assign_to_centroids(batches, km, save_path, name, all_vector_transforms):
+def assign_to_centroids(batches: list, km: faiss.extra_wrappers.Kmeans, save_path: str, name: str, all_vector_transforms: list) -> np.ndarray:
+    print("km type", type(km))
     # Assign the data to the coarse centroids in batches
-    print (len(batches))
+    print(len(batches))
     all_centroid_assignments = []
     for i in range(len(batches)):
         x = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batches[i])
@@ -19,9 +19,9 @@ def assign_to_centroids(batches, km, save_path, name, all_vector_transforms):
 
 
 def train_sub_clusters(
-    num_coarse_clusters, sub_clusters_per_coarse_cluster, d, sorted_centroid_assignments, bin_count,
-    iteration_stats, save_path, name, batches, all_vector_transforms
-):
+    num_coarse_clusters: int, sub_clusters_per_coarse_cluster: int, vector_dimension: int, sorted_centroid_assignments: np.ndarray,
+    bin_count: np.ndarray, save_path: str, name: str, batches: list, all_vector_transforms: list
+) -> np.ndarray:
 
     # Convert the batches list from a list of lists to a single list
     # This is a list of vector ids
@@ -47,19 +47,18 @@ def train_sub_clusters(
 
         data_subset = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batch_ids)
         data_subset = apply_pre_transforms(data_subset, all_vector_transforms)
-        
-        km = faiss.Kmeans(d, num_sub_clusters)
+
+        km = faiss.Kmeans(vector_dimension, num_sub_clusters)
         km.train(data_subset)
-        iteration_stats.append(km.iteration_stats)
         sub_clusters.append(km.centroids)
         del km
         index_0 = index_1
 
-    return np.vstack(sub_clusters), iteration_stats
+    return np.vstack(sub_clusters)
 
 
 def two_level_clustering(
-        num_coarse_clusters, num_total_clusters, save_path, name, all_vector_transforms, rebalance=True, clustering_niter=25):
+        num_coarse_clusters: int, num_total_clusters: int, save_path: str, name: str, all_vector_transforms: list, clustering_niter: int = 25) -> np.ndarray:
 
     # Define the number of vectors to pull in from the lmdb at a time (can't hold all vectors in memory at once)
     num_vectors_per_batch = 250000
@@ -76,21 +75,19 @@ def two_level_clustering(
     )
     start_time = time.time()
     km.train(random_sub_sample)
-    print ("time taken to train km", time.time() - start_time)
-
-    iteration_stats = [km.iteration_stats]
+    print("time taken to train km", time.time() - start_time)
 
     start_time = time.time()
     batches = break_into_batches(save_path, name, num_vectors_per_batch)
     extended_batches = []
     for batch in batches:
         extended_batches.extend(batch)
-    print ("time taken to break into batches", time.time() - start_time)
+    print("time taken to break into batches", time.time() - start_time)
 
     start_time = time.time()
     all_centroid_assignments = assign_to_centroids(
         batches, km, save_path, name, all_vector_transforms)
-    print ("time taken to assign to centroids", time.time() - start_time)
+    print("time taken to assign to centroids", time.time() - start_time)
     bin_count = np.bincount(all_centroid_assignments,
                             minlength=num_coarse_clusters)
     # The centroids are sorted by the coarse cluster number they belong to
@@ -106,24 +103,26 @@ def two_level_clustering(
     sub_clusters_per_coarse_cluster[1:] -= sub_clusters_per_coarse_cluster[:-1]
 
     start_time = time.time()
-    sub_clusters, iteration_stats = train_sub_clusters(
+    sub_clusters = train_sub_clusters(
         num_coarse_clusters, sub_clusters_per_coarse_cluster, d, sorted_centroid_assignments, bin_count,
-        iteration_stats, save_path, name, batches, all_vector_transforms
+        save_path, name, batches, all_vector_transforms
     )
-    print ("time taken to train sub clusters", time.time() - start_time)
+    print("time taken to train sub clusters", time.time() - start_time)
 
-    return sub_clusters, batches
+    return sub_clusters
 
 
-def handle_pre_transforms(index, vector_dimension, save_path, name):
+def handle_pre_transforms(index: faiss.IndexPreTransform, vector_dimension: int, save_path: str, name: str) -> tuple(faiss.Index, list):
     # handle PreTransforms
 
     # index is the faiss index
     # vector_dimension is the dimensionality of the vectors
 
     start_time = time.time()
-    random_sub_sample, _ = get_random_vectors(vector_dimension*100, save_path, name)
-    print ("time taken to get random vectors inside handle_pre_transforms", time.time() - start_time)
+    random_sub_sample, _ = get_random_vectors(
+        vector_dimension*100, save_path, name)
+    print("time taken to get random vectors inside handle_pre_transforms",
+          time.time() - start_time)
     all_vector_transforms = []
     for i in range(index.chain.size()):
         vector_transform = index.chain.at(i)
@@ -135,24 +134,26 @@ def handle_pre_transforms(index, vector_dimension, save_path, name):
     return faiss.downcast_index(index.index), all_vector_transforms
 
 
-def train_ivf_index_with_2level(index, num_total_clusters, vector_dimension, save_path, name):
+def train_ivf_index_with_2level(index: faiss.IndexPreTransform, num_total_clusters: int, vector_dimension: int, save_path: str, name: str) -> faiss.IndexPreTransform:
     """
     Applies 2-level clustering to an index_ivf embedded in an index.
     """
 
     start_time = time.time()
-    ivf_index, all_vector_transforms = handle_pre_transforms(index, vector_dimension, save_path, name)
-    print ("time taken to handle pre transforms", time.time() - start_time)
+    ivf_index, all_vector_transforms = handle_pre_transforms(
+        index, vector_dimension, save_path, name)
+    print("time taken to handle pre transforms", time.time() - start_time)
     assert isinstance(ivf_index, faiss.IndexIVF)
     assert ivf_index.metric_type == faiss.METRIC_L2
 
     # now do 2-level clustering
-    num_coarse_clusters = int(np.sqrt(ivf_index.nlist))  # number of clusters at top level
-    
+    # number of clusters at top level
+    num_coarse_clusters = int(np.sqrt(ivf_index.nlist))
+
     start_time = time.time()
-    centroids, batches = two_level_clustering(
+    centroids = two_level_clustering(
         num_coarse_clusters, num_total_clusters, save_path, name, all_vector_transforms)
-    print ("time taken to do two level clustering", time.time() - start_time)
+    print("time taken to do two level clustering", time.time() - start_time)
     ivf_index.quantizer.train(centroids)
     ivf_index.quantizer.add(centroids)
 
@@ -162,28 +163,21 @@ def train_ivf_index_with_2level(index, num_total_clusters, vector_dimension, sav
     # get samples from disk
     start_time = time.time()
     random_sub_sample, _ = get_random_vectors(max_samples, save_path, name)
-    random_sub_sample = apply_pre_transforms(random_sub_sample, all_vector_transforms)
-    print ("time taken to get random vectors and apply_pre_transforms", time.time() - start_time)
+    random_sub_sample = apply_pre_transforms(
+        random_sub_sample, all_vector_transforms)
+    print("time taken to get random vectors and apply_pre_transforms",
+          time.time() - start_time)
 
     start_time = time.time()
     ivf_index.train(random_sub_sample)
-    print ("time taken to train ivf index", time.time() - start_time)
-    
-    """# Get all of the vectors from the knowledge base and add them to the index (in batches)
-    start_time = time.time()
+    print("time taken to train ivf index", time.time() - start_time)
+
     index.index = ivf_index
-    for i in range(len(batches)):
-        batch_ids = batches[i]
-        data_subset = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batch_ids)
-        index.add_with_ids(data_subset, batch_ids)
-    print ("num per batch", len(batch_ids))
-    print ("time taken to add vectors to index", time.time() - start_time)"""
-    index.index = ivf_index
-    
+
     return index
 
 
-def get_random_vectors(n, save_path, name):
+def get_random_vectors(n: int, save_path: str, name: str) -> tuple[np.ndarray, np.ndarray]:
 
     lmdb_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
     # Cap the number of vectors to the number of ids in the lmdb
@@ -199,13 +193,13 @@ def get_random_vectors(n, save_path, name):
     return vectors, random_vector_ids
 
 
-def apply_pre_transforms(vectors, all_vt):
+def apply_pre_transforms(vectors: np.ndarray, all_vt: list) -> np.ndarray:
     for vt in all_vt:
         vectors = vt.apply(vectors)
     return vectors
 
 
-def break_into_batches(save_path, name, num_vectors_per_batch):
+def break_into_batches(save_path: str, name: str, num_vectors_per_batch: int) -> list:
     # Break the vectors into batches of size batch_size
     lmdb_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
     lmdb_ids = [int(i) for i in lmdb_ids]

@@ -2,7 +2,7 @@ import numpy as np
 import lmdb
 
 
-def create_lmdb(save_path, name):
+def create_lmdb(save_path: str, name: str) -> None:
     
     # Create the LMDB for the vectors
     env = lmdb.open(f'{save_path}{name}_full_vectors')
@@ -13,7 +13,7 @@ def create_lmdb(save_path, name):
     env.close()
 
 
-def add_vectors_to_lmdb(save_path, name, vectors, ids):
+def add_vectors_to_lmdb(save_path: str, name: str, vectors: np.ndarray, ids: list) -> None:
     
     # Add the vectors to the LMDB
     env = lmdb.open(f'{save_path}{name}_full_vectors', map_size=1099511627776) # 1TB
@@ -24,7 +24,7 @@ def add_vectors_to_lmdb(save_path, name, vectors, ids):
     # TODO: handle the case where the vector upload fails
 
 
-def add_text_to_lmdb(save_path, name, text, ids):
+def add_text_to_lmdb(save_path: str, name: str, text: list, ids: list) -> None:
     
     # Add the text to LMDB
     env = lmdb.open(f'{save_path}{name}_full_text', map_size=1099511627776) # 1TB
@@ -35,7 +35,7 @@ def add_text_to_lmdb(save_path, name, text, ids):
     # TODO: handle the case where the text upload fails
 
 
-def remove_vectors_from_lmdb(save_path, name, ids):
+def remove_vectors_from_lmdb(save_path: str, name: str, ids: list):
     
     # Add the vectors to the LMDB
     env = lmdb.open(f'{save_path}{name}_full_vectors', map_size=1099511627776) # 1TB
@@ -46,7 +46,7 @@ def remove_vectors_from_lmdb(save_path, name, ids):
     # TODO: handle the case where the vector upload fails
 
 
-def remove_text_from_lmdb(save_path, name, ids):
+def remove_text_from_lmdb(save_path: str, name: str, ids: list):
     
     # Add the text to LMDB
     env = lmdb.open(f'{save_path}{name}_full_text', map_size=1099511627776) # 1TB
@@ -57,7 +57,7 @@ def remove_text_from_lmdb(save_path, name, ids):
     # TODO: handle the case where the text upload fails
 
 
-def get_ranked_vectors(save_path, name, I):
+def get_ranked_vectors(save_path: str, name: str, I: np.ndarray) -> tuple(np.ndarray, dict):
 
     # query lmdb for the vectors
     corpus_vectors = []
@@ -76,7 +76,7 @@ def get_ranked_vectors(save_path, name, I):
     return corpus_vectors, position_to_id_map
 
 
-def get_reranked_text(save_path, name, reranked_I, position_to_id_map):
+def get_reranked_text(save_path: str, name: str, reranked_I: np.ndarray, position_to_id_map: dict) -> list:
     
     # retrieve text for top_k results from LMDB
     reranked_text = []
@@ -91,7 +91,7 @@ def get_reranked_text(save_path, name, reranked_I, position_to_id_map):
     env.close()
     return reranked_text
 
-def get_lmdb_index_ids(save_path, name):
+def get_lmdb_index_ids(save_path: str, name: str) -> list:
     env = lmdb.open(f'{save_path}{name}_full_vectors')
     # Get the ids from the LMDB
     with env.begin() as txn:
@@ -101,7 +101,7 @@ def get_lmdb_index_ids(save_path, name):
     env.close()
     return keys
 
-def get_lmdb_vectors_by_ids(save_path, name, ids):
+def get_lmdb_vectors_by_ids(save_path: str, name: str, ids: list) -> np.ndarray:
     env = lmdb.open(f'{save_path}{name}_full_vectors')
     # Get the ids from the LMDB
     with env.begin() as txn:

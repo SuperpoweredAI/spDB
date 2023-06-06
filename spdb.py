@@ -24,7 +24,7 @@ class spDB:
     def vector_dimension(self):
         return self._vector_dimension
 
-    def save(self):
+    def save(self) -> None:
         # save faiss index and delete (so it doesn't get pickled)
         tmp = self.faiss_index
         if self.faiss_index is not None:
@@ -36,7 +36,7 @@ class spDB:
 
         self.faiss_index = tmp
 
-    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32):
+    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32) -> None:
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
@@ -64,7 +64,7 @@ class spDB:
 
         self.save()
 
-    def add(self, vectors: np.ndarray, text: list):
+    def add(self, vectors: np.ndarray, text: list) -> None:
         # add vector to faiss index
 
         # Validate the inputs
@@ -87,7 +87,7 @@ class spDB:
         self._vector_dimension = vectors.shape[1]
         self.save()
 
-    def remove(self, vector_ids: np.ndarray):
+    def remove(self, vector_ids: np.ndarray) -> None:
         # vector_ids can be a list or a 1D numpy array. If it is a list, it will be converted to a numpy array
         # because faiss.remove_ids requires a numpy array
 
@@ -111,7 +111,7 @@ class spDB:
         # remove text from LMDB
         lmdb_utils.remove_text_from_lmdb(self.save_path, self.name, vector_ids)
 
-    def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100):
+    def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100) -> list:
 
         # query_vector needs to be a 1D array
         is_valid, reason = input_validation.validate_query(query_vector)
@@ -137,7 +137,7 @@ class spDB:
         return reranked_text
 
 
-def load_knowledge_base(name, save_path: str):
+def load_knowledge_base(name, save_path: str) -> spDB:
     # load KnowledgeBase object from pickle file
     kb = pickle.load(open(f'{save_path}{name}.pickle', 'rb'))
 

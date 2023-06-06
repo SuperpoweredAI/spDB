@@ -2,7 +2,7 @@ import numpy as np
 import re
 
 
-def validate_database_name(name: str):
+def validate_database_name(name: str) -> tuple(bool, str):
     # Make sure the DB name is valid. It must be valid for a file name
     name_regex = r'^[a-zA-Z0-9_ -]+$'
     if not re.match(name_regex, name):
@@ -11,7 +11,7 @@ def validate_database_name(name: str):
         return True, ""
 
 
-def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_bytes: int, opq_dimension: int):
+def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_bytes: int, opq_dimension: int) -> tuple(bool, str):
 
     # If the vector dimension is not set, that means there are no vectors in the database
     if vector_dimension == None:
@@ -47,7 +47,7 @@ def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_
     return True, "Success"
 
 
-def validate_add(vectors: np.ndarray, text: list, vector_dimension: int):
+def validate_add(vectors: np.ndarray, text: list, vector_dimension: int) -> tuple(bool, str):
         
     # Make sure the data is the correct type (probably a numpy array)
     if not isinstance(vectors, np.ndarray):
@@ -64,7 +64,7 @@ def validate_add(vectors: np.ndarray, text: list, vector_dimension: int):
     return True, "Success"
 
 
-def validate_remove(ids: np.ndarray):
+def validate_remove(ids: np.ndarray) -> tuple(bool, str):
 
     # Make sure the data is the correct type (numpy array)
     if not isinstance(ids, np.ndarray):
@@ -84,7 +84,7 @@ def validate_remove(ids: np.ndarray):
         return False, "IDs are not 1D. IDs: " + str(ids.shape)
 
 
-def validate_query(query_vector: np.ndarray, vector_dimension: int):
+def validate_query(query_vector: np.ndarray, vector_dimension: int) -> tuple(bool, str):
 
     # Make sure the data is the correct type (numpy array)
     if not isinstance(query_vector, np.ndarray):
