@@ -169,7 +169,7 @@ def train_ivf_index_with_2level(index, num_total_clusters, vector_dimension, sav
     ivf_index.train(random_sub_sample)
     print ("time taken to train ivf index", time.time() - start_time)
     
-    # Get all of the vectors from the knowledge base and add them to the index (in batches)
+    """# Get all of the vectors from the knowledge base and add them to the index (in batches)
     start_time = time.time()
     index.index = ivf_index
     for i in range(len(batches)):
@@ -177,13 +177,10 @@ def train_ivf_index_with_2level(index, num_total_clusters, vector_dimension, sav
         data_subset = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batch_ids)
         index.add_with_ids(data_subset, batch_ids)
     print ("num per batch", len(batch_ids))
-    print ("time taken to add vectors to index", time.time() - start_time)
+    print ("time taken to add vectors to index", time.time() - start_time)"""
+    index.index = ivf_index
     
-    # Set the n_probe parameter for the index
-    n_probe = utils.get_n_probe(ivf_index.nlist)
-    faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
-    
-    return index, ivf_index
+    return index
 
 
 def get_random_vectors(n, save_path, name):

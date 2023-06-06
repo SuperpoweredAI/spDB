@@ -45,3 +45,19 @@ def get_num_batches(num_vectors, vector_dimension, max_memory_usage):
     # We don't really need to push memory requirements here, so we'll just use 1/4 of the max memory usage
     num_batches = int(np.ceil(memory_usage / (max_memory_usage / 4)))
     return num_batches
+
+def determine_optimal_training_method(max_memory_usage, vector_dimension, num_vectors):
+
+    memory_usage = get_training_memory_usage(vector_dimension, num_vectors)
+    max_num_vectors = int((max_memory_usage / memory_usage) * num_vectors)
+    num_clusters = get_num_clusters(num_vectors)
+    num_vectors_per_cluster = int(max_num_vectors / num_clusters)
+
+    # faiss recommends a minimum of 39 vectors per cluster
+    if num_vectors_per_cluster < 39:
+        # We can use the subsampling method
+        return 'clustering'
+    else:
+        # We need to use the clustering method
+        return 'subsample'
+    
