@@ -14,11 +14,15 @@ class spDB:
         self.name = name
         self.save_path = save_path
         self.faiss_index = None
-        self.vector_dimension = vector_dimension
+        self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
 
         lmdb_utils.create_lmdb(save_path, name)
+
+    @property
+    def vector_dimension(self):
+        return self._vector_dimension
 
     def save(self):
         # save faiss index and delete (so it doesn't get pickled)
@@ -81,7 +85,7 @@ class spDB:
             # TODO: transform vectors if necessary
             self.faiss_index.add_with_ids(vectors, ids)
 
-        self.vector_dimension = vectors.shape[1]
+        self._vector_dimension = vectors.shape[1]
         self.save()
 
     def remove(self, vector_ids):
