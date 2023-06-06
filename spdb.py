@@ -93,7 +93,6 @@ class spDB:
     def query(self, query_vector: np.ndarray, top_k: int = 100):
 
         # query_vector needs to be a 1D array
-
         is_valid, reason = input_validation.validate_query(query_vector)
         if not is_valid:
             raise ValueError(reason)

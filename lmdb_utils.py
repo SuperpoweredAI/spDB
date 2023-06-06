@@ -20,6 +20,8 @@ def add_vectors_to_lmdb(save_path, name, vectors, ids):
     with env.begin(write=True) as txn:
         for i, vector in enumerate(vectors):
             txn.put(str(ids[i]).encode('utf-8'), vector.tobytes())
+    
+    # TODO: handle the case where the vector upload fails
 
 
 def add_text_to_lmdb(save_path, name, text, ids):
@@ -29,6 +31,8 @@ def add_text_to_lmdb(save_path, name, text, ids):
     with env.begin(write=True) as txn:
         for i, t in enumerate(text):
             txn.put(str(ids[i]).encode('utf-8'), t.encode('utf-8'))
+    
+    # TODO: handle the case where the text upload fails
 
 
 def get_ranked_vectors(save_path, name, I):
