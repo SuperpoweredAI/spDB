@@ -35,6 +35,28 @@ def add_text_to_lmdb(save_path, name, text, ids):
     # TODO: handle the case where the text upload fails
 
 
+def remove_vectors_from_lmdb(save_path, name, ids):
+    
+    # Add the vectors to the LMDB
+    env = lmdb.open(f'{save_path}{name}_full_vectors', map_size=1099511627776) # 1TB
+    with env.begin(write=True) as txn:
+        for id in ids:
+            txn.delete(str(id).encode('utf-8'))
+    
+    # TODO: handle the case where the vector upload fails
+
+
+def remove_text_from_lmdb(save_path, name, ids):
+    
+    # Add the text to LMDB
+    env = lmdb.open(f'{save_path}{name}_full_text', map_size=1099511627776) # 1TB
+    with env.begin(write=True) as txn:
+        for id in ids:
+            txn.delete(str(id).encode('utf-8'))
+    
+    # TODO: handle the case where the text upload fails
+
+
 def get_ranked_vectors(save_path, name, I):
 
     # query lmdb for the vectors
