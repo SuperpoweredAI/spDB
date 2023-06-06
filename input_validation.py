@@ -1,5 +1,12 @@
 import numpy as np
+import re
 
+
+def validate_name(name):
+    # Make sure the DB name is valid. It must be valid for a file name
+    name_regex = r'^[a-zA-Z0-9_ -]+$'
+    if not re.match(name_regex, name):
+        return False, "Name is not valid. Name: " + name
 
 def validate_train(vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension):
 

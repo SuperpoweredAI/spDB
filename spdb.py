@@ -10,7 +10,7 @@ import train
 
 
 class spDB:
-    def __init__(self, name, save_path=None, vector_dimension=None, max_memory_usage=4 * 1024 * 1024 * 1024):
+    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4 * 1024 * 1024 * 1024):
         self.name = name
         self.save_path = save_path
         self.faiss_index = None
@@ -33,22 +33,23 @@ class spDB:
 
         self.faiss_index = tmp
 
-
     def train(self, use_two_level_clustering: bool = None, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32):
 
         # Validate the inputs
-        is_valid, reason = input_validation.validate_train(self.vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension)
+        is_valid, reason = input_validation.validate_train(
+            self.vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension)
         if not is_valid:
             raise ValueError(reason)
-        
+
         # Load the vectors from the LMDB
         vector_ids = lmdb_utils.get_lmdb_index_ids(self.save_path, self.name)
         num_vectors = len(vector_ids)
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
-            training_method = utils.determine_optimal_training_method(self.max_memory_usage, self.vector_dimension, num_vectors)
-        
+            training_method = utils.determine_optimal_training_method(
+                self.max_memory_usage, self.vector_dimension, num_vectors)
+
         if use_two_level_clustering or training_method == 'clustering':
             print('Training with clustering')
             self.faiss_index = train.train_with_two_level_clustering(
@@ -59,7 +60,6 @@ class spDB:
                 self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage)
 
         self.save()
-
 
     def add(self, vectors: np.ndarray, text: list):
         # add vector to faiss index
@@ -90,7 +90,7 @@ class spDB:
 
         pass
 
-    def query(self, query_vector: np.ndarray, top_k=100):
+    def query(self, query_vector: np.ndarray, top_k: int = 100):
 
         # query_vector needs to be a 1D array
 
@@ -117,7 +117,7 @@ class spDB:
         return reranked_text
 
 
-def load_knowledge_base(name, save_path):
+def load_knowledge_base(name, save_path: str):
     # load KnowledgeBase object from pickle file
     kb = pickle.load(open(f'{save_path}{name}.pickle', 'rb'))
 
