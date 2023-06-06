@@ -90,7 +90,7 @@ class spDB:
 
         pass
 
-    def query(self, query_vector: np.ndarray, top_k: int = 100):
+    def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100):
 
         # query_vector needs to be a 1D array
         is_valid, reason = input_validation.validate_query(query_vector)
@@ -102,13 +102,13 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
-        _, I = self.faiss_index.search(query_vector, 500)
+        _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.save_path, self.name, I)
 
         # brute force search full vectors to find true top_k
-        _, reranked_I = knn(query_vector, corpus_vectors, top_k)
+        _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
 
         reranked_text = lmdb_utils.get_reranked_text(
             self.save_path, self.name, reranked_I, position_to_id_map)
