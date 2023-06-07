@@ -14,8 +14,13 @@ class TestInputParameters(unittest.TestCase):
         is_valid, _ = validate_database_name(db_name)
         self.assertTrue(is_valid)
     
-    def test__validate_database_name_invalid(self):
+    def test__validate_database_name_invalid_period(self):
         db_name = 'test.db'
+        is_valid, _ = validate_database_name(db_name)
+        self.assertFalse(is_valid)
+    
+    def test__validate_database_name_invalid_character(self):
+        db_name = 'test_db#'
         is_valid, _ = validate_database_name(db_name)
         self.assertFalse(is_valid)
 

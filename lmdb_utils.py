@@ -57,7 +57,7 @@ def remove_text_from_lmdb(save_path: str, name: str, ids: list):
     # TODO: handle the case where the text upload fails
 
 
-def get_ranked_vectors(save_path: str, name: str, I: np.ndarray) -> tuple(np.ndarray, dict):
+def get_ranked_vectors(save_path: str, name: str, I: np.ndarray) -> tuple[np.ndarray, dict]:
 
     # query lmdb for the vectors
     corpus_vectors = []

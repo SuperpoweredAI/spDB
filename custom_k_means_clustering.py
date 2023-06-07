@@ -5,9 +5,7 @@ import lmdb_utils
 
 
 def assign_to_centroids(batches: list, km: faiss.extra_wrappers.Kmeans, save_path: str, name: str, all_vector_transforms: list) -> np.ndarray:
-    print("km type", type(km))
     # Assign the data to the coarse centroids in batches
-    print(len(batches))
     all_centroid_assignments = []
     for i in range(len(batches)):
         x = lmdb_utils.get_lmdb_vectors_by_ids(save_path, name, batches[i])
@@ -112,7 +110,7 @@ def two_level_clustering(
     return sub_clusters
 
 
-def handle_pre_transforms(index: faiss.IndexPreTransform, vector_dimension: int, save_path: str, name: str) -> tuple(faiss.Index, list):
+def handle_pre_transforms(index: faiss.IndexPreTransform, vector_dimension: int, save_path: str, name: str) -> tuple[faiss.Index, list]:
     # handle PreTransforms
 
     # index is the faiss index
