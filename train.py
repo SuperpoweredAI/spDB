@@ -11,7 +11,6 @@ def train_with_two_level_clustering(save_path: str, name: str, vector_dimension:
     # TODO: Figure out a better way of getting the number of vectors
     vector_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
     num_vectors = len(vector_ids)
-    print("num_vectors", num_vectors)
 
     # Get the parameters for training the index
     num_clusters = utils.get_num_clusters(num_vectors)
@@ -24,7 +23,7 @@ def train_with_two_level_clustering(save_path: str, name: str, vector_dimension:
         vector_dimension, index_factory_parameter_string)
 
     # Train the index
-    index = custom_k_means_clustering.train_ivf_index_with_2level(
+    index = custom_k_means_clustering.train_ivf_index_with_two_level(
         faiss_index, num_clusters, vector_dimension, save_path, name)
     print("done training index")
 

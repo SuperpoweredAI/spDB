@@ -37,7 +37,7 @@ def create_faiss_index_ids(max_id: int, num_new_vectors: int) -> list:
 
 def get_training_memory_usage(vector_dimension: int, num_vectors: int) -> int:
     # 1M 768 dimension vectors uses ~10GB of memory
-    memory_usage = num_vectors * vector_dimension * 4 * 3 # 4 bytes per float, with a 3x multiplier for overhead
+    memory_usage = int(num_vectors * vector_dimension * 4 * 3) # 4 bytes per float, with a 3x multiplier for overhead
     return memory_usage
 
 def get_num_batches(num_vectors: int, vector_dimension: int, max_memory_usage: int) -> int:

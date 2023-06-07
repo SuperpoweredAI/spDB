@@ -132,7 +132,7 @@ def handle_pre_transforms(index: faiss.IndexPreTransform, vector_dimension: int,
     return faiss.downcast_index(index.index), all_vector_transforms
 
 
-def train_ivf_index_with_2level(index: faiss.IndexPreTransform, num_total_clusters: int, vector_dimension: int, save_path: str, name: str) -> faiss.IndexPreTransform:
+def train_ivf_index_with_two_level(index: faiss.IndexPreTransform, num_total_clusters: int, vector_dimension: int, save_path: str, name: str) -> faiss.IndexPreTransform:
     """
     Applies 2-level clustering to an index_ivf embedded in an index.
     """
@@ -141,6 +141,9 @@ def train_ivf_index_with_2level(index: faiss.IndexPreTransform, num_total_cluste
     ivf_index, all_vector_transforms = handle_pre_transforms(
         index, vector_dimension, save_path, name)
     print("time taken to handle pre transforms", time.time() - start_time)
+
+    # TODO: check these instead of using assert, and if they're not true, raise an error
+    # although, I don't think it is possible for these to not be true, so these should go in a test
     assert isinstance(ivf_index, faiss.IndexIVF)
     assert ivf_index.metric_type == faiss.METRIC_L2
 

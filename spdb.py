@@ -25,7 +25,7 @@ class spDB:
         return self._vector_dimension
 
     def save(self) -> None:
-        # save faiss index and delete (so it doesn't get pickled)
+        # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
         tmp = self.faiss_index
         if self.faiss_index is not None:
             faiss.write_index(self.faiss_index, f'{self.save_path}{self.name}.index')
@@ -34,6 +34,7 @@ class spDB:
         # save object to pickle file
         pickle.dump(self, open(f'{self.save_path}{self.name}.pickle', 'wb'))
 
+        # Reset the faiss index
         self.faiss_index = tmp
 
     def train(self, use_two_level_clustering: bool = None, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32) -> None:
@@ -88,8 +89,8 @@ class spDB:
         self.save()
 
     def remove(self, vector_ids: np.ndarray) -> None:
-        # vector_ids can be a list or a 1D numpy array. If it is a list, it will be converted to a numpy array
-        # because faiss.remove_ids requires a numpy array
+        # vector_ids can be a list or a 1D numpy array. If it is a list, it will be converted
+        # to a numpy array because faiss.remove_ids requires a numpy array
 
         if isinstance(vector_ids, list):
             vector_ids = np.array(vector_ids)
