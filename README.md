@@ -5,6 +5,17 @@ It’s possible to build a vector database with extremely low memory requirement
 
 With spDB, you can index and query 100M 768d vectors with peak memory usage of around 3GB. With an in-memory vector DB, you would need ~340GB of RAM.
 
+## Usage
+```python
+import spdb
+
+db = spdb.spDB()
+db.add(vectors)
+db.train()
+
+results = db.query(query_vector)
+```
+
 ## Architecture overview
 spDB uses a two-step process to perform approximate nearest neighbors search. First, a highly compressed Faiss index is searched to find the `preliminary_top_k` (set to 500 by default) results. Then the full uncompressed vectors for these results are retrieved from a key-value store on disk, and a k-nearest neighbors search is performed on these vectors to arrive at the `final_top_k` results.
 
@@ -14,3 +25,6 @@ spDB has a few parameters you can adjust to control the tradeoff between memory 
 - `pca_dimension`: Principal Component Analysis (PCA) is the first step in the compression process, and this parameter defines how many dimensions to reduce the vector to with PCA. You can usually do a 2-4x reduction without substantially hurting recall.
 - `opq_dimension`: Optimized Product Quantization (OPQ) is the second compression step. The main purpose of this step is to prepare the vector for the product quantization step that follows, but it's also common to do a 2x dimensionality reduction in this step. One thing to keep in mind is that the value for this parameter has to be divisible by the following parameter, `compressed_vector_bytes`, and it's recommended that this value is 4x that value.
 - `compressed_vector_bytes`: The final, and most important, compression step is Product Quantization (PQ). This parameter controls the size of the final compressed vectors, measured in bytes. Since the compressed vectors are the primary thing stored in memory, this parameter has a direct impact on memory usage. 32 and 64 are generally the best values for this parameter, but you could also try 16 if you want an extremely compressed index, or 128 if you don't need aggressive compression. For reference, uncompressed vectors use four bytes per dimension, so uncompressed 768d vectors use 3,072 bytes per vector.
+
+## Contributing
+We are open to contributions of all types.
