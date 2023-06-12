@@ -29,6 +29,29 @@ def get_n_probe(num_clusters: int) -> int:
 
     return int(n_probe_factor * num_clusters)
 
+def create_index_factory_parameter_string(pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, num_clusters: int, vector_dimension: int):
+
+    index_factory_parameters = []
+    
+    if pca_dimension is not None:
+        index_factory_parameters.append(f'PCA{pca_dimension}')
+    else:
+        # If there is no PCA or OPQ, then the Faiss index is no longer an IndexPreTransform object, which would cause failures
+        index_factory_parameters.append(f'PCA{vector_dimension}')
+    
+    if opq_dimension is not None and compressed_vector_bytes is not None:
+        index_factory_parameters.append(f'OPQ{compressed_vector_bytes}_{opq_dimension}')
+    
+    index_factory_parameters.append(f'IVF{num_clusters}')
+
+    if compressed_vector_bytes is not None:
+        index_factory_parameters.append(f'PQ{compressed_vector_bytes}')
+    else:
+        index_factory_parameters.append('Flat')
+
+    index_factory_parameter_string = ','.join(index_factory_parameters)
+    return index_factory_parameter_string
+
 def create_faiss_index_ids(max_id: int, num_new_vectors: int) -> list:
     # Create a sequential list of IDs for the new vectors
     # The IDs start at max_id + 1 and go up to max_id + num_new_vectors
@@ -46,6 +69,12 @@ def get_num_batches(num_vectors: int, vector_dimension: int, max_memory_usage: i
     num_batches = int(np.ceil(memory_usage / (max_memory_usage / 4)))
     return num_batches
 
+def get_num_vectors_per_batch(max_memory_usage: int, vector_dimension: int) -> int:
+    # This does basically the same thing as get_num_batches, but returns the number of vectors per batch
+    num_vectors = int(max_memory_usage / (vector_dimension * 4 * 3)) # 4 bytes per float, plus 3x for overhead
+    # We don't really need to push memory requirements here, so we'll just use 1/4 of the max memory usage
+    return int(num_vectors/4)
+
 def determine_optimal_training_method(max_memory_usage: int, vector_dimension: int, num_vectors: int) -> str:
 
     memory_usage = get_training_memory_usage(vector_dimension, num_vectors)
@@ -55,9 +84,9 @@ def determine_optimal_training_method(max_memory_usage: int, vector_dimension: i
 
     # faiss recommends a minimum of 39 vectors per cluster
     if num_vectors_per_cluster < 39:
-        # We can use the subsampling method
-        return 'clustering'
-    else:
         # We need to use the clustering method
-        return 'subsample'
+        return 'two_level_clustering'
+    else:
+        # We can use the subsampling method
+        return 'subsampling'
     
