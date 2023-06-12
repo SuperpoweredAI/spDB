@@ -1,7 +1,7 @@
 import faiss
 import numpy as np
 
-import custom_k_means_clustering
+import two_level_clustering
 import lmdb_utils
 import utils
 
@@ -14,17 +14,16 @@ def train_with_two_level_clustering(save_path: str, name: str, vector_dimension:
 
     # Get the parameters for training the index
     num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameters = [
-        f'PCA{pca_dimension}', f'OPQ{compressed_vector_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{compressed_vector_bytes}']
-    index_factory_parameter_string = ','.join(index_factory_parameters)
+    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension)
+    print ("index_factory_parameter_string", index_factory_parameter_string)
 
     # create the index
     faiss_index = faiss.index_factory(
         vector_dimension, index_factory_parameter_string)
 
     # Train the index
-    index = custom_k_means_clustering.train_ivf_index_with_two_level(
-        faiss_index, num_clusters, vector_dimension, save_path, name)
+    index = two_level_clustering.train_ivf_index_with_two_level_clustering(
+        faiss_index, num_clusters, max_memory_usage, vector_dimension, save_path, name)
     print("done training index")
 
     index = add_vectors_to_faiss(
@@ -45,10 +44,8 @@ def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca
 
     # Get the parameters for training the index
     num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameters = [
-        f'PCA{pca_dimension}', f'OPQ{compressed_vector_bytes}_{opq_dimension}', f'IVF{num_clusters}', f'PQ{compressed_vector_bytes}']
-    index_factory_parameter_string = ','.join(index_factory_parameters)
-    print(index_factory_parameter_string)
+    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension)
+    print ("index_factory_parameter_string", index_factory_parameter_string)
 
     # Get a subset of the vectors
     memory_usage = utils.get_training_memory_usage(
@@ -64,7 +61,6 @@ def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca
         vector_ids, num_vectors_to_train, replace=False)
     vectors = lmdb_utils.get_lmdb_vectors_by_ids(
         save_path, name, random_indices)
-    print("num vectors", len(vectors))
 
     # create the index
     index = faiss.index_factory(
