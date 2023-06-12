@@ -9,40 +9,31 @@ from utils import *
 
 class TestGetNumClusters(unittest.TestCase):
 
-    ### Test get_num_clusters ###
-    def test__get_num_clusters_small(self):
-        # 10k vectors
-        num_clusters = get_num_clusters(num_vectors=10000)
-        self.assertEqual(num_clusters, 200)
-    
-    def test__get_num_clusters_medium(self):
-        # 1M vectors
-        num_clusters = get_num_clusters(num_vectors=1000000)
-        self.assertEqual(num_clusters, 6324)
-    
-    def test__get_num_clusters_large(self):
-        # 100M vectors
-        num_clusters = get_num_clusters(num_vectors=100000000)
-        self.assertEqual(num_clusters, 200000)
-    
+    test_cases = [
+        (10000, 200),
+        (1000000, 6324),
+        (100000000, 200000),
+    ]
+    def test__get_num_clusters(self):
+        for num_vectors, expected_num_clusters in self.test_cases:
+            with self.subTest(num_vectors=num_vectors, expected_num_clusters=expected_num_clusters):
+                num_clusters = get_num_clusters(num_vectors)
+                self.assertEqual(num_clusters, expected_num_clusters)
+
 
 class TestGetNProbe(unittest.TestCase):
 
-    ### Test get_n_probe ###
-    def test__get_n_probe_small(self):
-        # 200 clusters, which corresponds to 10k vectors
-        n_probe = get_n_probe(num_clusters=200)
-        self.assertEqual(n_probe, 100)
-    
-    def test__get_n_probe_medium(self):
-        # 6324 clusters, which corresponds to 1M vectors
-        n_probe = get_n_probe(num_clusters=6324)
-        self.assertEqual(n_probe, 445)
-    
-    def test__get_n_probe_large(self):
-        # 200k clusters, which corresponds to 100M vectors
-        n_probe = get_n_probe(num_clusters=200000)
-        self.assertEqual(n_probe, 6000)
+    test_cases = [
+        (200, 100),
+        (1000, 250),
+        (6350, 444),
+        (200000, 6000),
+    ]
+    def test__get_n_probe(self):
+        for num_clusters, expected_n_probe in self.test_cases:
+            with self.subTest(num_clusters=num_clusters, expected_n_probe=expected_n_probe):
+                n_probe = get_n_probe(num_clusters)
+                self.assertEqual(n_probe, expected_n_probe)
     
 
 class TestGetTrainingMemoryUsage(unittest.TestCase):
@@ -64,13 +55,13 @@ class TestGetNumBatches(unittest.TestCase):
 class TestDetermineOptimalTrainingMethod(unittest.TestCase):
 
     ### Test determine_optimal_training_method ###
-    def test__determine_optimal_training_method_clustering(self):
+    def test__determine_optimal_training_method__clustering(self):
         # 5M vectors
         method = determine_optimal_training_method(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 5000000)
-        self.assertEqual(method, 'clustering')
+        self.assertEqual(method, 'two_level_clustering')
     
-    def test__determine_optimal_training_method_subsample(self):
+    def test__determine_optimal_training_method__subsampling(self):
         # 1M vectors
         method = determine_optimal_training_method(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
-        self.assertEqual(method, 'subsample')
+        self.assertEqual(method, 'subsampling')
 
