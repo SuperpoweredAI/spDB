@@ -10,38 +10,41 @@ def validate_database_name(name: str) -> tuple[bool, str]:
         return True, ""
 
 
-def validate_train(vector_dimension: int, pca_dimension: int, compressed_vector_bytes: int, opq_dimension: int) -> tuple[bool, str]:
+def validate_train(vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int) -> tuple[bool, str]:
 
     # If the vector dimension is not set, that means there are no vectors in the database
     if vector_dimension == None:
         return False, "No vectors have been added to the database"
+    
+    if compressed_vector_bytes is None and opq_dimension is not None:
+        return False, "compressed_vector_bytes must be set if opq_dimension is set"
 
     # Make sure pca, pq_bytes, and opq_dimension are integers and are all positive
-    if not isinstance(pca_dimension, int):
-        return False, "PCA is not the correct type. Expected type: int. Actual type: " + str(type(pca_dimension))
-    if not isinstance(compressed_vector_bytes, int):
-        return False, "PQ is not the correct type. Expected type: int. Actual type: " + str(type(compressed_vector_bytes))
-    if not isinstance(opq_dimension, int):
-        return False, "OPQ is not the correct type. Expected type: int. Actual type: " + str(type(opq_dimension))
+    if pca_dimension is not None and not isinstance(pca_dimension, int):
+        return False, "pca_dimension is not the correct type. Expected type: int. Actual type: " + str(type(pca_dimension))
+    if opq_dimension is not None and not isinstance(opq_dimension, int):
+        return False, "opq_dimension is not the correct type. Expected type: int. Actual type: " + str(type(opq_dimension))
+    if compressed_vector_bytes is not None and not isinstance(compressed_vector_bytes, int):
+        return False, "compressed_vector_bytes is not the correct type. Expected type: int. Actual type: " + str(type(compressed_vector_bytes))
     
-    if pca_dimension < 1:
-        return False, "PCA is not positive. PCA: " + str(pca_dimension)
-    if compressed_vector_bytes < 1:
-        return False, "PQ is not positive. PQ: " + str(compressed_vector_bytes)
-    if opq_dimension < 1:
-        return False, "OPQ is not positive. OPQ: " + str(opq_dimension)
+    if pca_dimension is not None and pca_dimension < 1:
+        return False, "pca_dimension is not positive. pca_dimension: " + str(pca_dimension)
+    if opq_dimension is not None and opq_dimension < 1:
+        return False, "opq_dimension is not positive. opq_dimension: " + str(opq_dimension)
+    if compressed_vector_bytes is not None and compressed_vector_bytes < 1:
+        return False, "compressed_vector_bytes is not positive. compressed_vector_bytes: " + str(compressed_vector_bytes)
 
     # Make sure PCA is less than the number of columns in the data
-    if pca_dimension > vector_dimension:
-        return False, "PCA is larger than the number of columns in the data. Number of columns in data: " + str(vector_dimension) + " PCA: " + str(pca_dimension)
+    if pca_dimension is not None and pca_dimension > vector_dimension:
+        return False, "pca_dimension is larger than the number of columns in the data. Number of columns in data: " + str(vector_dimension) + " pca_dimension: " + str(pca_dimension)
     
     # OPQ has to be less than or equal to PCA
-    if opq_dimension > pca_dimension:
-        return False, "OPQ is larger than PCA. PCA: " + str(pca_dimension) + " OPQ: " + str(opq_dimension)
+    if (opq_dimension is not None and pca_dimension is not None) and opq_dimension > pca_dimension:
+        return False, "opq_dimension is larger than pca_dimension. pca_dimension: " + str(pca_dimension) + " opq_dimension: " + str(opq_dimension)
     
     # opq_dimension has to be divisible by compressed_vector_bytes
-    if opq_dimension % compressed_vector_bytes != 0:
-        return False, "OPQ is not divisible by PQ. PCA: " + str(opq_dimension) + " PQ: " + str(compressed_vector_bytes)
+    if opq_dimension is not None and opq_dimension % compressed_vector_bytes != 0:
+        return False, "opq_dimension is not divisible by compressed_vector_bytes. opq_dimension: " + str(opq_dimension) + " compressed_vector_bytes: " + str(compressed_vector_bytes)
     
     return True, "Success"
 
@@ -76,11 +79,13 @@ def validate_remove(ids: np.ndarray) -> tuple[bool, str]:
     # Make sure the IDs are positive
     if np.any(ids < 0):
         # This won't actually cause an error, but it should never happen so we want to warn the user
-        return False, "IDs are not positive. IDs: " + str(ids)
+        return False, "Negative IDs found. All IDs must be positive"
     
     # Make sure the data is a 1D array
     if len(ids.shape) != 1:
         return False, "IDs are not 1D. IDs: " + str(ids.shape)
+    
+    return True, "Success"
 
 
 def validate_query(query_vector: np.ndarray, vector_dimension: int) -> tuple[bool, str]:
@@ -88,6 +93,9 @@ def validate_query(query_vector: np.ndarray, vector_dimension: int) -> tuple[boo
     # Make sure the data is the correct type (numpy array)
     if not isinstance(query_vector, np.ndarray):
         return False, "Query vectors are not the correct type. Expected type: numpy array. Actual type: " + str(type(query_vector))
+    
+    if len(query_vector.shape) == 1:
+        query_vector = query_vector.reshape((-1, vector_dimension))
     
     # Make sure the query vector is the correct size. The 
     if vector_dimension != None and query_vector.shape[1] != vector_dimension:
