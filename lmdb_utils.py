@@ -80,6 +80,7 @@ def get_reranked_text(save_path: str, name: str, reranked_I: np.ndarray, positio
     
     # retrieve text for top_k results from LMDB
     reranked_text = []
+    reranked_ids = []
     env = lmdb.open(f'{save_path}{name}_full_text')
     with env.begin() as txn:
         for position in reranked_I[0]:
@@ -88,8 +89,9 @@ def get_reranked_text(save_path: str, name: str, reranked_I: np.ndarray, positio
             # Convert from bytes to string
             value = value.decode('utf-8')
             reranked_text.append(value)
+            reranked_ids.append(id)
     env.close()
-    return reranked_text
+    return reranked_text, reranked_ids
 
 def get_lmdb_index_ids(save_path: str, name: str) -> list:
     env = lmdb.open(f'{save_path}{name}_full_vectors')
