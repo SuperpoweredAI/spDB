@@ -10,7 +10,7 @@ import train
 
 
 class spDB:
-    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4 * 1024 * 1024 * 1024):
+    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024):
         self.name = name
         self.save_path = save_path
         self.faiss_index = None
@@ -41,7 +41,7 @@ class spDB:
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
-            self.vector_dimension, pca_dimension, compressed_vector_bytes, opq_dimension)
+            self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
         if not is_valid:
             raise ValueError(reason)
 
@@ -54,8 +54,8 @@ class spDB:
             training_method = utils.determine_optimal_training_method(
                 self.max_memory_usage, self.vector_dimension, num_vectors)
 
-        if use_two_level_clustering or training_method == 'clustering':
-            print('Training with clustering')
+        if use_two_level_clustering or training_method == 'two_level_clustering':
+            print('Training with two level clustering')
             self.faiss_index = train.train_with_two_level_clustering(
                 self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage)
         else:
@@ -115,7 +115,7 @@ class spDB:
     def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100) -> list:
 
         # query_vector needs to be a 1D array
-        is_valid, reason = input_validation.validate_query(query_vector)
+        is_valid, reason = input_validation.validate_query(query_vector, self.vector_dimension)
         if not is_valid:
             raise ValueError(reason)
 
@@ -132,13 +132,13 @@ class spDB:
         # brute force search full vectors to find true top_k
         _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
 
-        reranked_text = lmdb_utils.get_reranked_text(
+        reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
             self.save_path, self.name, reranked_I, position_to_id_map)
 
-        return reranked_text
+        return reranked_text, reranked_ids
 
 
-def load_knowledge_base(name, save_path: str) -> spDB:
+def load_knowledge_base(name: str, save_path: str) -> spDB:
     # load KnowledgeBase object from pickle file
     kb = pickle.load(open(f'{save_path}{name}.pickle', 'rb'))
 
