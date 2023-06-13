@@ -1,12 +1,7 @@
 import unittest
-import os
-import sys
 import numpy as np
 
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
-from input_validation import *
-
+from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
 
@@ -25,13 +20,13 @@ class TestNameInputParameters(unittest.TestCase):
     ### Test valid database names ###
     def test__validate_database_name__valid_names(self):
         for database_name in self.valid_database_names:
-            is_valid, _ = validate_database_name(database_name)
+            is_valid, _ = input_validation.validate_database_name(database_name)
             self.assertTrue(is_valid)
     
     ### Test invalid database names ###
     def test__validate_database_name__invalid_names(self):
         for database_name in self.invalid_database_names:
-            is_valid, _ = validate_database_name(database_name)
+            is_valid, _ = input_validation.validate_database_name(database_name)
             self.assertFalse(is_valid)
 
 
@@ -57,12 +52,12 @@ class TestTrainInputParameters(unittest.TestCase):
 
     def test__validate_train__valid_parameters(self):
         for vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes in self.valid_train_parameters:
-            is_valid, _ = validate_train(vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
+            is_valid, _ = input_validation.validate_train(vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
             self.assertTrue(is_valid)
 
     def test__validate_train__invalid_parameters(self):
         for vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, expected_reason in self.invalid_train_parameters:
-            is_valid, reason = validate_train(vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
+            is_valid, reason = input_validation.validate_train(vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
 
@@ -87,12 +82,12 @@ class TestAddInputParameters(unittest.TestCase):
 
     def test__validate_add__valid_parameters(self):
         for vectors, text, vector_dimension in self.valid_add_parameters:
-            is_valid, _ = validate_add(vectors, text, vector_dimension)
+            is_valid, _ = input_validation.validate_add(vectors, text, vector_dimension)
             self.assertTrue(is_valid)
 
     def test__validate_add__invalid_parameters(self):
         for vectors, text, vector_dimension, expected_reason in self.invalid_add_parameters:
-            is_valid, reason = validate_add(vectors, text, vector_dimension)
+            is_valid, reason = input_validation.validate_add(vectors, text, vector_dimension)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
 
@@ -111,11 +106,11 @@ class TestRemoveInputParameters(unittest.TestCase):
 
     def test__validate_remove__valid_parameters(self):
         for ids in self.valid_remove_parameters:
-            is_valid, _ = validate_remove(ids)
+            is_valid, _ = input_validation.validate_remove(ids)
             self.assertTrue(is_valid)
 
     def test__validate_remove__invalid_parameters(self):
         for ids, expected_reason in self.invalid_remove_parameters:
-            is_valid, reason = validate_remove(ids)
+            is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)

@@ -10,9 +10,8 @@ import time
 
 # get the absolute file path of this file
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(FILE_PATH + '/../../')
 
-from spdb import spDB
+from spdb.spdb import spDB
 
 
 def get_test_data() -> tuple[np.ndarray, list, np.ndarray, np.ndarray]:
@@ -106,7 +105,3 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
-        
-
-if __name__ == '__main__':
-    unittest.main()
