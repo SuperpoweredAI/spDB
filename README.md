@@ -6,17 +6,19 @@ It’s possible to build a vector database with extremely low memory requirement
 With spDB, you can index and query 100M 768d vectors with peak memory usage of around 3GB. With an in-memory vector DB, you would need ~340GB of RAM.
 
 ## Usage
-```python
-import spdb
+`pip install spdb`
 
-db = spdb.spDB()
+```python
+from spdb import spDB
+
+db = spDB(name="Example")
 db.add(vectors)
 db.train()
 
 results = db.query(query_vector)
 ```
 
-## Parameters
+## Key parameters
 spDB has a few parameters you can adjust to control the tradeoff between memory usage, recall, and latency. You may also need to adjust certain parameters based on the size of your vectors. The default parameters were designed around 768d vectors, with a high focus placed on low memory usage.
 
 - `pca_dimension`: Principal Component Analysis (PCA) is the first step in the compression process, and this parameter defines how many dimensions to reduce the vector to with PCA. You can usually do a 2-4x reduction without substantially hurting recall.
