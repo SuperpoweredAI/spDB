@@ -6,9 +6,6 @@ import lmdb_utils
 import utils
 
 
-VECTOR_LMDB_PATH = ''  # TODO: make everything use a global variable instead of passing around a variable that's reused all over the place
-
-
 def train_with_two_level_clustering(vector_db_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:
 
     # TODO: Figure out a better way of getting the number of vectors
