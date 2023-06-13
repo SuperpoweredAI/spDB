@@ -13,7 +13,6 @@ import train
 class spDB:
     def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024):
         self.name = name
-        self.save_path = save_path
         self.faiss_index = None
         self._vector_dimension = vector_dimension
         self.max_id = -1
@@ -21,7 +20,9 @@ class spDB:
         
         # Set the save path to the current directory if it is not specified
         if self.save_path is None:
-            self.save_path = os.path.join(os.getcwd(), '.spdb/')
+            self.save_path = os.path.join(os.getcwd(), '.spdb')
+        else:
+            self.save_path = save_path
 
         # Create the save directory if it doesn't exist
         os.makedirs(self.save_path, exist_ok=True)
@@ -36,11 +37,12 @@ class spDB:
         # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
         tmp = self.faiss_index
         if self.faiss_index is not None:
-            faiss.write_index(self.faiss_index, f'{self.save_path}{self.name}.index')
+            faiss.write_index(self.faiss_index, os.path.join(self.save_path, f'{self.name}.index'))
             self.faiss_index = None
 
         # save object to pickle file
-        pickle.dump(self, open(f'{self.save_path}{self.name}.pickle', 'wb'))
+        with open(os.path.join(self.save_path, f'{self.name}.pickle', 'wb')) as f:
+            pickle.dump(self, f)
 
         # Reset the faiss index
         self.faiss_index = tmp
