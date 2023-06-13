@@ -214,7 +214,8 @@ def load_db(name: str, save_path: str = None) -> spDB:
         save_path = os.path.join(os.getcwd(), '.spdb')
 
     # load spDB object from pickle file
-    db = pickle.load(open(os.path.join(save_path, f'{name}.pickle'), 'rb'))
+    with open(os.path.join(save_path, f'{name}.pickle'), 'rb') as f:
+        db = pickle.load(f)
 
     # load faiss index from save path
     try:
