@@ -1,9 +1,9 @@
 import faiss
 import numpy as np
 
-import two_level_clustering
-import lmdb_utils
-import utils
+from . import two_level_clustering
+from . import lmdb_utils
+from . import utils
 
 
 def train_with_two_level_clustering(vector_db_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:

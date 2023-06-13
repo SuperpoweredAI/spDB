@@ -1,8 +1,9 @@
 import faiss
 import numpy as np
 import time
-import lmdb_utils
-import utils
+
+from . import lmdb_utils
+from . import utils
 
 
 def assign_to_centroids(batches: list, km: faiss.extra_wrappers.Kmeans, vector_db_path: str, all_vector_transforms: list) -> np.ndarray:

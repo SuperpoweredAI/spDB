@@ -4,10 +4,10 @@ import os
 import pickle
 from faiss.contrib.exhaustive_search import knn
 
-import utils
-import lmdb_utils
-import input_validation
-import train
+from . import utils
+from . import lmdb_utils
+from . import input_validation
+from . import train
 
 
 def get_spdb_path(name: str, save_path: str):
