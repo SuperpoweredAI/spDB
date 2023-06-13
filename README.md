@@ -6,13 +6,13 @@ It’s possible to build a vector database with extremely low memory requirement
 With spDB, you can index and query 100M 768d vectors with peak memory usage of around 3GB. With an in-memory vector DB, you would need ~340GB of RAM.
 
 ## Usage
-`pip install spdb`
+Install using pip: `pip install spdb`
 
 ```python
 from spdb import spDB
 
 db = spDB(name="Example")
-db.add(vectors)
+db.add(vectors, text)
 db.train()
 
 results = db.query(query_vector)
