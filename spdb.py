@@ -19,7 +19,7 @@ def get_spdb_path(name: str, save_path: str):
     """
     # Set the save path to the current directory if it is not specified
     if save_path is None:
-        save_path = os.path.join(os.path.expanduser("~"), f'.spdb/{name}')
+        save_path = os.path.join(os.path.expanduser("~"), '.spdb', name)
     return save_path
 
 
