@@ -11,7 +11,18 @@ import train
 
 
 class spDB:
+    """
+    A class representing a searchable database using Faiss and LMDB for efficient storage and retrieval of text and vectors.
+    """
     def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024):
+        """
+        Initialize the spDB object.
+
+        :param name: The name of the database.
+        :param save_path: The path where the database files will be saved. Defaults to a .spdb folder in the the current directory.
+        :param vector_dimension: The dimension of the vectors to be stored in the database. 
+        :param max_memory_usage: The maximum memory usage allowed for the construction and querying of the database, in bytes. Defaults to 4 GB.
+        """
         self.name = name
         self.faiss_index = None
         self._vector_dimension = vector_dimension
@@ -34,7 +45,12 @@ class spDB:
         return self._vector_dimension
     
     def add(self, vectors: np.ndarray, text: list) -> None:
-        # add vector to faiss index
+        """
+        Add vectors and their corresponding text to the database.
+
+        :param vectors: A numpy array of vectors to be added.
+        :param text: A list of text corresponding to the vectors.
+        """
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
@@ -57,6 +73,15 @@ class spDB:
         self.save()
 
     def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False) -> None:
+        """
+        Train the Faiss index for efficient vector search.
+
+        :param use_two_level_clustering: Whether to use two-level clustering for training. If None, the optimal method will be determined based on memory usage and number of vectors.
+        :param pca_dimension: The target dimension for PCA dimensionality reduction. If None, a default value will be used.
+        :param opq_dimension: The target dimension for OPQ dimensionality reduction. If None, a default value will be used.
+        :param compressed_vector_bytes: The number of bytes to use for compressed vectors. If None, a default value will be used.
+        :param omit_opq: Whether to omit the OPQ step during training. This reduces training time with a slight drop in accuracy. Defaults to False.
+        """
 
         # get default parameters
         default_params = utils.get_default_faiss_params(self.vector_dimension)
@@ -95,6 +120,15 @@ class spDB:
         self.save()
 
     def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100) -> list:
+        """
+        Query the database to find the most similar text to the given query vector.
+
+        :param query_vector: A 1D numpy array representing the query vector.
+        :param preliminary_top_k: The number of preliminary results to retrieve from the compressed Faiss index. Should be 5-10x higher than final_top_k. Defaults to 500.
+        :param final_top_k: The number of final results to return after reranking. Defaults to 100.
+
+        :return: two lists containing the reranked text and their corresponding IDs, respectively.
+        """
 
         # query_vector needs to be a 1D array
         is_valid, reason = input_validation.validate_query(query_vector, self.vector_dimension)
@@ -120,8 +154,11 @@ class spDB:
         return reranked_text, reranked_ids
     
     def remove(self, vector_ids: np.ndarray) -> None:
-        # vector_ids can be a list or a 1D numpy array. If it is a list, it will be converted
-        # to a numpy array because faiss.remove_ids requires a numpy array
+        """
+        Remove vectors and their corresponding text from the database.
+
+        :param vector_ids: A numpy array or list of vector IDs to be removed.
+        """
 
         if isinstance(vector_ids, list):
             vector_ids = np.array(vector_ids)
@@ -144,6 +181,10 @@ class spDB:
         lmdb_utils.remove_text_from_lmdb(self.save_path, self.name, vector_ids)
     
     def save(self) -> None:
+        """
+        Save the spDB object and its associated Faiss index to disk.
+        """
+
         # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
         tmp = self.faiss_index
         if self.faiss_index is not None:
@@ -159,6 +200,15 @@ class spDB:
 
 
 def load_db(name: str, save_path: str = None) -> spDB:
+    """
+    Load an existing spDB object and its associated Faiss index from disk.
+
+    :param name: The name of the database to load.
+    :param save_path: The path where the database files are saved. Defaults to the .spdb folder in the the current directory.
+
+    :return: An spDB object.
+    """
+    
     # use default save path if none is provided
     if save_path is None:
         save_path = os.path.join(os.getcwd(), '.spdb')
