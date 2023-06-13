@@ -2,6 +2,7 @@ import pickle
 import faiss
 from faiss.contrib.exhaustive_search import knn
 import numpy as np
+import os
 
 import utils
 import lmdb_utils
@@ -17,8 +18,15 @@ class spDB:
         self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
+        
+        # Set the save path to the current directory if it is not specified
+        if self.save_path is None:
+            self.save_path = os.path.join(os.getcwd(), '.spdb/')
 
-        lmdb_utils.create_lmdb(save_path, name)
+        # Create the save directory if it doesn't exist
+        os.makedirs(self.save_path, exist_ok=True)
+
+        lmdb_utils.create_lmdb(self.save_path, name)
 
     @property
     def vector_dimension(self):
