@@ -160,11 +160,11 @@ class spDB:
 
 def load_knowledge_base(name: str, save_path: str) -> spDB:
     # load KnowledgeBase object from pickle file
-    kb = pickle.load(open(f'{save_path}{name}.pickle', 'rb'))
+    kb = pickle.load(open(os.path.join(save_path, f'{name}.pickle'), 'rb'))
 
     # load faiss index from save path
     try:
-        index = faiss.read_index(f'{kb.save_path}{name}.index')
+        index = faiss.read_index(os.path.join(kb.save_path, f'{name}.index'))
     except:
         index = None
     kb.faiss_index = index
