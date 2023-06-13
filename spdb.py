@@ -76,7 +76,7 @@ class spDB:
 
     @property
     def lmdb_text_path(self):
-        return self.lmdb_text_path
+        return self._lmdb_text_path
 
     def add(self, vectors: np.ndarray, text: list) -> None:
         """
