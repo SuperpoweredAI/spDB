@@ -73,8 +73,9 @@ class TestFullSpdbEvaluation(unittest.TestCase):
     def setup(self):
         self.db_name = "test_db"
         self.pca_dimension = 256
-        self.opq_dimension = None # None here speeds up the test with a very small performance hit
+        self.opq_dimension = 128
         self.compressed_vector_bytes = 32
+        self.omit_opq = True # This speeds up the test with a very small performance hit
         self.query_k = 500
         self.gt_k = 50
 
@@ -92,7 +93,7 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         db.add(vectors, text)
 
         # Train the index
-        db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes)
+        db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
 
         # Evaluate the index
         recall, latency, all_unique_ids = evaluate(db, queries, ground_truths, self.query_k, self.gt_k)
@@ -116,4 +117,3 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-    

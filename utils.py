@@ -29,7 +29,7 @@ def get_n_probe(num_clusters: int) -> int:
 
     return int(n_probe_factor * num_clusters)
 
-def create_index_factory_parameter_string(pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, num_clusters: int, vector_dimension: int):
+def create_index_factory_parameter_string(pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, num_clusters: int, vector_dimension: int, omit_opq: bool) -> str:
 
     index_factory_parameters = []
     
@@ -39,7 +39,8 @@ def create_index_factory_parameter_string(pca_dimension: int, opq_dimension: int
         # If there is no PCA or OPQ, then the Faiss index is no longer an IndexPreTransform object, which would cause failures
         index_factory_parameters.append(f'PCA{vector_dimension}')
     
-    if opq_dimension is not None and compressed_vector_bytes is not None:
+    # If omit_opq is True, then we don't want to include OPQ in the index factory parameter string
+    if not omit_opq and compressed_vector_bytes is not None:
         index_factory_parameters.append(f'OPQ{compressed_vector_bytes}_{opq_dimension}')
     
     index_factory_parameters.append(f'IVF{num_clusters}')
@@ -89,4 +90,45 @@ def determine_optimal_training_method(max_memory_usage: int, vector_dimension: i
     else:
         # We can use the subsampling method
         return 'subsampling'
+    
+def get_default_faiss_params(vector_dimension: int) -> dict:
+    if vector_dimension < 150:
+        return {
+            "pca_dimension": max(64, vector_dimension),
+            "opq_dimension": max(64, vector_dimension),
+            "compressed_vector_bytes": 16,
+        }
+    elif vector_dimension < 300:
+        return {
+            "pca_dimension": 128,
+            "opq_dimension": 64,
+            "compressed_vector_bytes": 16,
+        }
+    # e5-small, miniLM
+    elif vector_dimension < 600:
+        return {
+            "pca_dimension": 256,
+            "opq_dimension": 128,
+            "compressed_vector_bytes": 32,
+        }
+    # e5-base, Cohere multilingual
+    elif vector_dimension < 1000:
+        return {
+            "pca_dimension": 256,
+            "opq_dimension": 128,
+            "compressed_vector_bytes": 32,
+        }
+    # e5-large, OpenAI Ada
+    elif vector_dimension < 2000:
+        return {
+            "pca_dimension": 512,
+            "opq_dimension": 256,
+            "compressed_vector_bytes": 64,
+        }
+    else:
+        return {
+            "pca_dimension": 1024,
+            "opq_dimension": 512,
+            "compressed_vector_bytes": 128,
+        }
     

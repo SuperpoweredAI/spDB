@@ -6,7 +6,7 @@ import lmdb_utils
 import utils
 
 
-def train_with_two_level_clustering(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int) -> faiss.IndexPreTransform:
+def train_with_two_level_clustering(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:
 
     # TODO: Figure out a better way of getting the number of vectors
     vector_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
@@ -14,7 +14,7 @@ def train_with_two_level_clustering(save_path: str, name: str, vector_dimension:
 
     # Get the parameters for training the index
     num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension)
+    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     print ("index_factory_parameter_string", index_factory_parameter_string)
 
     # create the index
@@ -36,7 +36,7 @@ def train_with_two_level_clustering(save_path: str, name: str, vector_dimension:
     return index
 
 
-def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int) -> faiss.IndexPreTransform:
+def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:
 
     # Load the vectors from the LMDB
     vector_ids = lmdb_utils.get_lmdb_index_ids(save_path, name)
@@ -44,7 +44,7 @@ def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca
 
     # Get the parameters for training the index
     num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension)
+    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     print ("index_factory_parameter_string", index_factory_parameter_string)
 
     # Get a subset of the vectors
@@ -79,7 +79,7 @@ def train_with_subsampling(save_path: str, name: str, vector_dimension: int, pca
 
 
 def add_vectors_to_faiss(save_path: str, name: str, index: faiss.IndexPreTransform, vector_ids: list, num_vectors: int, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:
-
+    
     # Add all of the vectors to the index. We need to know the number of batches to do this in
     num_batches = utils.get_num_batches(
         num_vectors, vector_dimension, max_memory_usage)
@@ -95,45 +95,3 @@ def add_vectors_to_faiss(save_path: str, name: str, index: faiss.IndexPreTransfo
         index.add_with_ids(vectors, batch_ids)
 
     return index
-
-
-def get_default_faiss_params(vector_dimension: int) -> dict:
-    if vector_dimension < 150:
-        return {
-            "pca_dimension": max(64, vector_dimension),
-            "opq_dimension": max(64, vector_dimension),
-            "compressed_vector_bytes": 16,
-        }
-    elif vector_dimension < 300:
-        return {
-            "pca_dimension": 128,
-            "opq_dimension": 64,
-            "compressed_vector_bytes": 16,
-        }
-    # e5-small, miniLM
-    elif vector_dimension < 600:
-        return {
-            "pca_dimension": 256,
-            "opq_dimension": 128,
-            "compressed_vector_bytes": 32,
-        }
-    # e5-base, Cohere multilingual
-    elif vector_dimension < 1000:
-        return {
-            "pca_dimension": 256,
-            "opq_dimension": 128,
-            "compressed_vector_bytes": 32,
-        }
-    # e5-large, OpenAI Ada
-    elif vector_dimension < 2000:
-        return {
-            "pca_dimension": 512,
-            "opq_dimension": 256,
-            "compressed_vector_bytes": 64,
-        }
-    else:
-        return {
-            "pca_dimension": 1024,
-            "opq_dimension": 512,
-            "compressed_vector_bytes": 128,
-        }

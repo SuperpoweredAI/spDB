@@ -37,8 +37,18 @@ class spDB:
         # Reset the faiss index
         self.faiss_index = tmp
 
-    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = 256, opq_dimension: int = 128, compressed_vector_bytes: int = 32) -> None:
+    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False) -> None:
 
+        # get default parameters
+        default_params = utils.get_default_faiss_params(self.vector_dimension)
+        if pca_dimension is None:
+            pca_dimension = default_params['pca_dimension']
+        if opq_dimension is None:
+            opq_dimension = default_params['opq_dimension']
+        if compressed_vector_bytes is None:
+            compressed_vector_bytes = default_params['compressed_vector_bytes']
+
+        
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
             self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
@@ -57,11 +67,11 @@ class spDB:
         if use_two_level_clustering or training_method == 'two_level_clustering':
             print('Training with two level clustering')
             self.faiss_index = train.train_with_two_level_clustering(
-                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage)
+                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
         else:
             print('Training with subsampling')
             self.faiss_index = train.train_with_subsampling(
-                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage)
+                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
 
         self.save()
 
