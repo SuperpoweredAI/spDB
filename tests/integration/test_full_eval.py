@@ -12,7 +12,9 @@ import time
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 from spdb.spdb import spDB
+from spdb import lmdb_utils
 
+lmdb_utils.MAP_SIZE = 10 * 1024 * 1024 * 1024  # set testing map size to 10 GB
 
 def get_test_data() -> tuple[np.ndarray, list, np.ndarray, np.ndarray]:
 
