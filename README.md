@@ -16,9 +16,6 @@ db.train()
 results = db.query(query_vector)
 ```
 
-## Architecture overview
-spDB uses a two-step process to perform approximate nearest neighbors search. First, a highly compressed Faiss index is searched to find the `preliminary_top_k` (set to 500 by default) results. Then the full uncompressed vectors for these results are retrieved from a key-value store on disk, and a k-nearest neighbors search is performed on these vectors to arrive at the `final_top_k` results.
-
 ## Parameters
 spDB has a few parameters you can adjust to control the tradeoff between memory usage, recall, and latency. You may also need to adjust certain parameters based on the size of your vectors. The default parameters were designed around 768d vectors, with a high focus placed on low memory usage.
 
@@ -26,5 +23,20 @@ spDB has a few parameters you can adjust to control the tradeoff between memory 
 - `opq_dimension`: Optimized Product Quantization (OPQ) is the second compression step. The main purpose of this step is to prepare the vector for the product quantization step that follows, but it's also common to do a 2x dimensionality reduction in this step. One thing to keep in mind is that the value for this parameter has to be divisible by the following parameter, `compressed_vector_bytes`, and it's recommended that this value is 4x that value.
 - `compressed_vector_bytes`: The final, and most important, compression step is Product Quantization (PQ). This parameter controls the size of the final compressed vectors, measured in bytes. Since the compressed vectors are the primary thing stored in memory, this parameter has a direct impact on memory usage. 32 and 64 are generally the best values for this parameter, but you could also try 16 if you want an extremely compressed index, or 128 if you don't need aggressive compression. For reference, uncompressed vectors use four bytes per dimension, so uncompressed 768d vectors use 3,072 bytes per vector.
 
+## Architecture overview
+spDB uses a two-step process to perform approximate nearest neighbors search. First, a highly compressed Faiss index is searched to find the `preliminary_top_k` (set to 500 by default) results. Then the full uncompressed vectors for these results are retrieved from a key-value store on disk, and a k-nearest neighbors search is performed on these vectors to arrive at the `final_top_k` results.
+
+## Performance
+TODO
+
+## Limitations
+- spDB uses a simple embedded database architecture, not a client-server architecture, so it may not be ideal for certain kinds of large-scale production applications.
+- One of the main dependencies, Faiss, doesn't play nice with Apple M1/M2 chips. You may be able to get it to work by building it from source, but we haven't successfully done so yet.
+- We haven't tested it on datasets larger than 35M vectors yet. It should still work well up to 100-200M vectors, but beyond that performance may start to deteriorate.
+
+## Development roadmap
+Here are our top development priorities. If you want to contribute in any of these areas, please reach out to coordinate.
+- Metadata filtering
+
 ## Contributing
-We are open to contributions of all types.
+We are open to contributions of all types. We use a standard fork and pull request flow. Make sure all tests pass and you have sufficient documentation for your changes before submitting a PR.
