@@ -55,8 +55,8 @@ class spDB:
         self._lmdb_path = os.path.join(self.save_path, 'lmdb')
 
         # create the lmdb databases
-        self._lmdb_full_vectors_db_path = lmdb_utils.create_db(self.lmdb_path, 'full_vectors')
-        self._lmdb_full_text_db_path = lmdb_utils.create_db(self.lmdb_path, 'full_text')
+        self._lmdb_full_vectors_db_path = lmdb_utils.create_lmdb(self.lmdb_path, 'full_vectors')
+        self._lmdb_full_text_db_path = lmdb_utils.create_lmdb(self.lmdb_path, 'full_text')
 
     @property
     def vector_dimension(self):

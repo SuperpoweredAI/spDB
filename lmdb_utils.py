@@ -7,7 +7,7 @@ from typing import Callable
 MAP_SIZE = 1099511627776 # 1TB
 
 
-def create_db(lmdb_path: str, db_name: str) -> str:
+def create_lmdb(lmdb_path: str, db_name: str) -> str:
     # Create the LMDB for the vectors
     db_path = os.path.join(lmdb_path, db_name)
     os.makedirs(db_path, exist_ok=True)
