@@ -95,3 +95,45 @@ def add_vectors_to_faiss(save_path: str, name: str, index: faiss.IndexPreTransfo
         index.add_with_ids(vectors, batch_ids)
 
     return index
+
+
+def get_default_faiss_params(vector_dimension: int) -> dict:
+    if vector_dimension < 150:
+        return {
+            "pca_dimension": max(64, vector_dimension),
+            "opq_dimension": max(64, vector_dimension),
+            "compressed_vector_bytes": 16,
+        }
+    elif vector_dimension < 300:
+        return {
+            "pca_dimension": 128,
+            "opq_dimension": 64,
+            "compressed_vector_bytes": 16,
+        }
+    # e5-small, miniLM
+    elif vector_dimension < 600:
+        return {
+            "pca_dimension": 256,
+            "opq_dimension": 128,
+            "compressed_vector_bytes": 32,
+        }
+    # e5-base, Cohere multilingual
+    elif vector_dimension < 1000:
+        return {
+            "pca_dimension": 256,
+            "opq_dimension": 128,
+            "compressed_vector_bytes": 32,
+        }
+    # e5-large, OpenAI Ada
+    elif vector_dimension < 2000:
+        return {
+            "pca_dimension": 512,
+            "opq_dimension": 256,
+            "compressed_vector_bytes": 64,
+        }
+    else:
+        return {
+            "pca_dimension": 1024,
+            "opq_dimension": 512,
+            "compressed_vector_bytes": 128,
+        }
