@@ -55,17 +55,10 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
     return recall, latency, all_unique_ids
 
 
-def clean_up(db_name):
-
-    # Delete the pickle file
-    os.remove(FILE_PATH + f'/{db_name}.pickle')
-
-    # Delete the index
-    os.remove(FILE_PATH + f'/{db_name}.index')
+def clean_up(db_path: str):
 
     # Delete the folders
-    shutil.rmtree(FILE_PATH + f'/{db_name}_full_vectors')
-    shutil.rmtree(FILE_PATH + f'/{db_name}_full_text')
+    shutil.rmtree(db_path)
 
 
 class TestFullSpdbEvaluation(unittest.TestCase):
@@ -87,7 +80,7 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         vectors, text, queries, ground_truths = get_test_data()
 
         # create the database
-        db = spDB(self.db_name, FILE_PATH + '/')
+        db = spDB(self.db_name)
 
         # add the data
         db.add(vectors, text)
@@ -101,7 +94,7 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         print ("recall", recall)
 
         # Delete the index, pickle file and folders
-        clean_up(self.db_name)
+        clean_up(db.save_path)
 
         # Set the recall cutoff at 0.97 and less than 1
         # If recall is above 1, something went wrong
