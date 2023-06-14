@@ -4,7 +4,7 @@ import os
 from typing import Callable
 
 
-MAP_SIZE = 1099511627776 # 1TB
+MAP_SIZE = 1024 * 1024 * 1024 * 1024  # 1TB
 
 
 def create_lmdb(lmdb_path: str, db_name: str) -> str:
