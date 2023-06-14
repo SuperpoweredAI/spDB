@@ -1,4 +1,5 @@
 import faiss
+import logging
 import numpy as np
 import os
 import pickle
@@ -8,6 +9,14 @@ from . import utils
 from . import lmdb_utils
 from . import input_validation
 from . import train
+
+
+def configure_logging(level):
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        datefmt='%m-%d %H:%M'
+    )
 
 
 def get_spdb_path(name: str, save_path: str):
@@ -27,7 +36,7 @@ class spDB:
     """
     A class representing a searchable database using Faiss and LMDB for efficient storage and retrieval of text and vectors.
     """
-    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024):
+    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024, logging_level: int = logging.INFO):
         """
         Initialize the spDB object.
 
@@ -42,6 +51,12 @@ class spDB:
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
 
+        # configure the logging
+        configure_logging(logging_level)
+        global logger
+        logger = logging.getLogger(__name__)
+        logger.info('Initializing spDB')
+
         # Set the save path to the current directory if it is not specified
         self._save_path = get_spdb_path(name, save_path)
 
@@ -50,13 +65,16 @@ class spDB:
             raise Exception(f"Database with name {self.name} already exists. Please choose a different name.")
 
         os.makedirs(self.save_path)
+        logger.info(f'Initializing spDB with name {name} at {self.save_path}')
 
         # set the lmdb path
         self._lmdb_path = os.path.join(self.save_path, 'lmdb')
 
         # create the lmdb databases
         self._lmdb_uncompressed_vectors_path = lmdb_utils.create_lmdb(self.lmdb_path, 'uncompressed_vectors')
+        logger.info(f'lmdb uncompressed vectors database location: {self.lmdb_uncompressed_vectors_path}')
         self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
+        logger.info(f'lmdb text database location: {self.lmdb_text_path}')
 
     @property
     def vector_dimension(self):
@@ -127,6 +145,8 @@ class spDB:
         :param omit_opq: Whether to omit the OPQ step during training. This reduces training time with a slight drop in accuracy. Defaults to False.
         """
 
+        logger.info('Training the Faiss index')
+
         # get default parameters
         default_params = utils.get_default_faiss_params(self.vector_dimension)
         if pca_dimension is None:
@@ -136,10 +156,18 @@ class spDB:
         if compressed_vector_bytes is None:
             compressed_vector_bytes = default_params['compressed_vector_bytes']
 
+        # log the training parameters individually
+        logger.info(f'pca_dimension: {pca_dimension}')
+        logger.info(f'opq_dimension: {opq_dimension}')
+        logger.info(f'compressed_vector_bytes: {compressed_vector_bytes}')
+        logger.info(f'omit_opq: {omit_opq}')
+
+
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
             self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
         if not is_valid:
+            logger.error(reason)
             raise ValueError(reason)
 
         # Load the vectors from the LMDB
@@ -155,7 +183,7 @@ class spDB:
             )
 
         if use_two_level_clustering or training_method == 'two_level_clustering':
-            print('Training with two level clustering')
+            logger.info('Training with two-level clustering')
             self.faiss_index = train.train_with_two_level_clustering(
                 self.lmdb_uncompressed_vectors_path,
                 self.vector_dimension,
@@ -166,7 +194,7 @@ class spDB:
                 omit_opq
             )
         else:
-            print('Training with subsampling')
+            logger.info('Training with subsampling')
             self.faiss_index = train.train_with_subsampling(
                 self.lmdb_uncompressed_vectors_path, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
 
@@ -247,12 +275,19 @@ class spDB:
         # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
         tmp = self.faiss_index
         if self.faiss_index is not None:
-            faiss.write_index(self.faiss_index, os.path.join(self.save_path, f'{self.name}.index'))
+            faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
+            logger.info(f'Saving faiss index to disk at {faiss_index_path}')
+
+            faiss.write_index(self.faiss_index, faiss_index_path)
             self.faiss_index = None
+            logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
         # save object to pickle file
-        with open(os.path.join(self.save_path, f'{self.name}.pickle'), 'wb') as f:
+        spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
+        logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
+        with open(spdb_object_pickle_path, 'wb') as f:
             pickle.dump(self, f)
+        logger.info(f'spDB object saved to disk at {spdb_object_pickle_path}')
 
         # Reset the faiss index
         self.faiss_index = tmp

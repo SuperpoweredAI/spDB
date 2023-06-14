@@ -1,11 +1,5 @@
 import os
 import setuptools
-import shutil
-
-
-long_desc = """\
-# spDB - A super memory-efficient vector database
-"""
 
 
 def read(fname):
@@ -46,10 +40,9 @@ setuptools.setup(
         "Intended Audience :: System Administrators",
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Database",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries",
