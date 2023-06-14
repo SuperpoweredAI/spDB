@@ -1,13 +1,26 @@
-import pickle
 import faiss
-from faiss.contrib.exhaustive_search import knn
 import numpy as np
 import os
+import pickle
+from faiss.contrib.exhaustive_search import knn
 
-import utils
-import lmdb_utils
-import input_validation
-import train
+from . import utils
+from . import lmdb_utils
+from . import input_validation
+from . import train
+
+
+def get_spdb_path(name: str, save_path: str):
+    """
+    Get the path to the spDB directory.
+
+    :param name: The name of the database.
+    :param save_path: The path where the database files will be saved. Defaults to ~/.spdb/{name}. If this directory does not exist, it will be created.
+    """
+    # Set the save path to the current directory if it is not specified
+    if save_path is None:
+        save_path = os.path.join(os.path.expanduser("~"), '.spdb', name)
+    return save_path
 
 
 class spDB:
@@ -19,7 +32,7 @@ class spDB:
         Initialize the spDB object.
 
         :param name: The name of the database.
-        :param save_path: The path where the database files will be saved. Defaults to a .spdb folder in the the current directory.
+        :param save_path: The path where the database files will be saved. Defaults to ~/.spdb/{name}. If this directory does not exist, it will be created.
         :param vector_dimension: The dimension of the vectors to be stored in the database. 
         :param max_memory_usage: The maximum memory usage allowed for the construction and querying of the database, in bytes. Defaults to 4 GB.
         """
@@ -28,22 +41,43 @@ class spDB:
         self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
-        
+
         # Set the save path to the current directory if it is not specified
-        if save_path is None:
-            self.save_path = os.path.join(os.getcwd(), '.spdb')
-        else:
-            self.save_path = save_path
+        self._save_path = get_spdb_path(name, save_path)
 
-        # Create the save directory if it doesn't exist
-        os.makedirs(self.save_path, exist_ok=True)
+        # Create the save directory if it doesn't exist and return an exception if it already does exist
+        if os.path.exists(self.save_path):
+            raise Exception(f"Database with name {self.name} already exists. Please choose a different name.")
 
-        lmdb_utils.create_lmdb(self.save_path, name)
+        os.makedirs(self.save_path)
+
+        # set the lmdb path
+        self._lmdb_path = os.path.join(self.save_path, 'lmdb')
+
+        # create the lmdb databases
+        self._lmdb_uncompressed_vectors_path = lmdb_utils.create_lmdb(self.lmdb_path, 'uncompressed_vectors')
+        self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
 
     @property
     def vector_dimension(self):
         return self._vector_dimension
-    
+
+    @property
+    def save_path(self):
+        return self._save_path
+
+    @property
+    def lmdb_path(self):
+        return self._lmdb_path
+
+    @property
+    def lmdb_uncompressed_vectors_path(self):
+        return self._lmdb_uncompressed_vectors_path
+
+    @property
+    def lmdb_text_path(self):
+        return self._lmdb_text_path
+
     def add(self, vectors: np.ndarray, text: list) -> None:
         """
         Add vectors and their corresponding text to the database.
@@ -61,8 +95,18 @@ class spDB:
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
-        lmdb_utils.add_vectors_to_lmdb(self.save_path, self.name, vectors, ids)
-        lmdb_utils.add_text_to_lmdb(self.save_path, self.name, text, ids)
+        lmdb_utils.add_items_to_lmdb(
+            db_path=self.lmdb_uncompressed_vectors_path,
+            items=vectors,
+            ids=ids,
+            encode_fn=np.ndarray.tobytes
+        )
+        lmdb_utils.add_items_to_lmdb(
+            db_path=self.lmdb_text_path,
+            items=text,
+            ids=ids,
+            encode_fn=str.encode
+        )
 
         # If the index is not trained, don't add the vectors to the index
         if self.faiss_index is not None:
@@ -92,7 +136,6 @@ class spDB:
         if compressed_vector_bytes is None:
             compressed_vector_bytes = default_params['compressed_vector_bytes']
 
-        
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
             self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes)
@@ -100,22 +143,32 @@ class spDB:
             raise ValueError(reason)
 
         # Load the vectors from the LMDB
-        vector_ids = lmdb_utils.get_lmdb_index_ids(self.save_path, self.name)
+        vector_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
         num_vectors = len(vector_ids)
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
             training_method = utils.determine_optimal_training_method(
-                self.max_memory_usage, self.vector_dimension, num_vectors)
+                max_memory_usage=self.max_memory_usage,
+                vector_dimension=self.vector_dimension,
+                num_vectors=num_vectors
+            )
 
         if use_two_level_clustering or training_method == 'two_level_clustering':
             print('Training with two level clustering')
             self.faiss_index = train.train_with_two_level_clustering(
-                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
+                self.lmdb_uncompressed_vectors_path,
+                self.vector_dimension,
+                pca_dimension,
+                opq_dimension,
+                compressed_vector_bytes,
+                self.max_memory_usage,
+                omit_opq
+            )
         else:
             print('Training with subsampling')
             self.faiss_index = train.train_with_subsampling(
-                self.save_path, self.name, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
+                self.lmdb_uncompressed_vectors_path, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
 
         self.save()
 
@@ -143,13 +196,13 @@ class spDB:
         _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
-            self.save_path, self.name, I)
+            self.lmdb_uncompressed_vectors_path, I)
 
         # brute force search full vectors to find true top_k
         _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
 
         reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
-            self.save_path, self.name, reranked_I, position_to_id_map)
+            self.lmdb_text_path, reranked_I, position_to_id_map)
 
         return reranked_text, reranked_ids
     
@@ -175,11 +228,17 @@ class spDB:
         self.save()
 
         # remove vectors from LMDB
-        lmdb_utils.remove_vectors_from_lmdb(self.save_path, self.name, vector_ids)
+        lmdb_utils.remove_from_lmdb(
+            db_path=self.lmdb_uncompressed_vectors_path,
+            ids=vector_ids
+        )
 
         # remove text from LMDB
-        lmdb_utils.remove_text_from_lmdb(self.save_path, self.name, vector_ids)
-    
+        lmdb_utils.remove_from_lmdb(
+            db_path=self.lmdb_text_path,
+            ids=vector_ids
+        )
+
     def save(self) -> None:
         """
         Save the spDB object and its associated Faiss index to disk.
@@ -208,10 +267,12 @@ def load_db(name: str, save_path: str = None) -> spDB:
 
     :return: An spDB object.
     """
-    
     # use default save path if none is provided
-    if save_path is None:
-        save_path = os.path.join(os.getcwd(), '.spdb')
+    save_path = get_spdb_path(name, save_path)
+
+    # make sure the database exists
+    if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
+        raise ValueError(f'No database named {name} exists in {save_path}')
 
     # load spDB object from pickle file
     with open(os.path.join(save_path, f'{name}.pickle'), 'rb') as f:
