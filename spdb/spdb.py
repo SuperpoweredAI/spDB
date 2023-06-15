@@ -232,13 +232,13 @@ class spDB:
         else:
             logger.info('Training with subsampling')
             new_faiss_index = train.train_with_subsampling(
-                self.lmdb_uncompressed_vectors_path,
-                self.vector_dimension,
-                pca_dimension,
-                opq_dimension,
-                compressed_vector_bytes,
-                self.max_memory_usage,
-                omit_opq,
+                uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
+                vector_dimension=self.vector_dimension,
+                pca_dimension=pca_dimension,
+                opq_dimension=opq_dimension,
+                compressed_vector_bytes=compressed_vector_bytes,
+                max_memory_usage=self.max_memory_usage,
+                omit_opq=omit_opq,
                 num_clusters=num_clusters
             )
             with self._faiss_lock:
