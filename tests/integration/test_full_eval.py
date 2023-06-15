@@ -35,7 +35,7 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
 class TestFullSpdbEvaluation(unittest.TestCase):
 
     def setUp(self):
-        self.db_name = "test_db"
+        self.db_name = "full_eval_test"
         self.pca_dimension = 256
         self.opq_dimension = 128
         self.compressed_vector_bytes = 32

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class TestThreadSafety(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.db_name = "test_db"
+        self.db_name = "threading_test"
         self.pca_dimension = 256
         self.opq_dimension = 128
         self.compressed_vector_bytes = 32
