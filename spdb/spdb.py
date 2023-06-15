@@ -120,7 +120,7 @@ class spDB:
         """
         return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
 
-    def add(self, vectors: np.ndarray, text: list) -> None:
+    def add(self, vectors: np.ndarray, text: list) -> list:
         """
         Add vectors and their corresponding text to the database.
 
@@ -166,6 +166,8 @@ class spDB:
 
         self._vector_dimension = vectors.shape[1]
         self.save()
+
+        return ids
 
     def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False, num_clusters: int = None) -> None:
         """
@@ -270,7 +272,6 @@ class spDB:
         t0 = time.time()
         with self._faiss_lock:
             _, I = self.faiss_index.search(query_vector, preliminary_top_k)
-        logger.info(f'queried faiss index of compressed vectors in: {time.time() - t0}')
 
         t0 = time.time()
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
@@ -281,7 +282,6 @@ class spDB:
 
         reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
             self.lmdb_text_path, reranked_I, position_to_id_map)
-        logger.info(f'queried candidate list of full vectors from lmdb and brute force searched: {time.time() - t0}')
 
         return reranked_text, reranked_ids
     
