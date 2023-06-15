@@ -62,11 +62,11 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Set the recall cutoff at 0.97 and less than 1
         # If recall is above 1, something went wrong
-        self.assertTrue(recall > 0.97)
-        self.assertTrue(recall <= 1)
+        self.assertGreater(recall, 0.97)
+        self.assertLessEqual(recall, 1)
 
         # Make sure latency is less than 15ms (this includes the re-ranking from disk step)
-        self.assertTrue(latency < 15)
+        self.assertLess(latency, 15)
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
