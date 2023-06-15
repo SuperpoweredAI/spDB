@@ -36,11 +36,11 @@ def remove_from_lmdb(db_path: str, ids: list):
     # TODO: handle the case where the delete fails
 
 
-def get_ranked_vectors(full_vectors_path: str, I: np.ndarray) -> tuple[np.ndarray, dict]:
+def get_ranked_vectors(uncompressed_vectors_lmdb_path: str, I: np.ndarray) -> tuple[np.ndarray, dict]:
     # query lmdb for the vectors
     corpus_vectors = []
     position_to_id_map = {}
-    env = lmdb.open(full_vectors_path)
+    env = lmdb.open(uncompressed_vectors_lmdb_path)
     with env.begin() as txn:
         for i, id in enumerate(I[0]):
             value = txn.get(str(id).encode('utf-8'))
@@ -53,11 +53,11 @@ def get_ranked_vectors(full_vectors_path: str, I: np.ndarray) -> tuple[np.ndarra
     return corpus_vectors, position_to_id_map
 
 
-def get_reranked_text(full_text_path: str, reranked_I: np.ndarray, position_to_id_map: dict) -> list:
+def get_reranked_text(text_lmdb_path: str, reranked_I: np.ndarray, position_to_id_map: dict) -> list:
     # retrieve text for top_k results from LMDB
     reranked_text = []
     reranked_ids = []
-    env = lmdb.open(full_text_path)
+    env = lmdb.open(text_lmdb_path)
     with env.begin() as txn:
         for position in reranked_I[0]:
             id = position_to_id_map[position]
@@ -80,8 +80,8 @@ def get_lmdb_index_ids(db_path: str) -> list:
     return keys
 
 
-def get_lmdb_vectors_by_ids(full_vectors_path: str, ids: list) -> np.ndarray:
-    env = lmdb.open(full_vectors_path)
+def get_lmdb_vectors_by_ids(uncompressed_vectors_lmdb_path: str, ids: list) -> np.ndarray:
+    env = lmdb.open(uncompressed_vectors_lmdb_path)
     # Get the ids from the LMDB
     with env.begin() as txn:
         vectors = []
