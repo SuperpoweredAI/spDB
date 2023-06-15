@@ -64,7 +64,7 @@ def clean_up(db_path: str):
 
 class TestFullSpdbEvaluation(unittest.TestCase):
 
-    def setup(self):
+    def setUp(self):
         self.db_name = "test_db"
         self.pca_dimension = 256
         self.opq_dimension = 128
@@ -74,8 +74,6 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.gt_k = 50
 
     def test__full_eval(self):
-
-        self.setup()
 
         # Get the test data from the pickled files
         vectors, text, queries, ground_truths = get_test_data()
