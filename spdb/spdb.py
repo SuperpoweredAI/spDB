@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import os
 import pickle
+import threading
 from faiss.contrib.exhaustive_search import knn
 
 from . import utils
@@ -10,6 +11,8 @@ from . import lmdb_utils
 from . import input_validation
 from . import train
 
+
+_FAISS_LOCK = threading.Lock()
 
 def configure_logging(level):
     logging.basicConfig(
@@ -129,7 +132,8 @@ class spDB:
         # If the index is not trained, don't add the vectors to the index
         if self.faiss_index is not None:
             # TODO: transform vectors if necessary
-            self.faiss_index.add_with_ids(vectors, ids)
+            with _FAISS_LOCK:
+                self.faiss_index.add_with_ids(vectors, ids)
 
         self._vector_dimension = vectors.shape[1]
         self.save()
@@ -184,7 +188,7 @@ class spDB:
 
         if use_two_level_clustering or training_method == 'two_level_clustering':
             logger.info('Training with two-level clustering')
-            self.faiss_index = train.train_with_two_level_clustering(
+            new_faiss_index = train.train_with_two_level_clustering(
                 self.lmdb_uncompressed_vectors_path,
                 self.vector_dimension,
                 pca_dimension,
@@ -193,10 +197,14 @@ class spDB:
                 self.max_memory_usage,
                 omit_opq
             )
+            with _FAISS_LOCK:
+                self.faiss_index = new_faiss_index
         else:
             logger.info('Training with subsampling')
-            self.faiss_index = train.train_with_subsampling(
+            new_faiss_index = train.train_with_subsampling(
                 self.lmdb_uncompressed_vectors_path, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
+            with _FAISS_LOCK:
+                self.faiss_index = new_faiss_index
 
         self.save()
 
@@ -221,7 +229,8 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
-        _, I = self.faiss_index.search(query_vector, preliminary_top_k)
+        with _FAISS_LOCK:
+            _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)
@@ -250,7 +259,8 @@ class spDB:
             raise ValueError(reason)
 
         # Remove the vectors from the faiss index (has to be done first)
-        self.faiss_index.remove_ids(vector_ids)
+        with _FAISS_LOCK:
+            self.faiss_index.remove_ids(vector_ids)
         # Save here in case something fails in the LMDB removal.
         # We can't have ids in the faiss index that don't exist in the LMDB
         self.save()
@@ -271,26 +281,26 @@ class spDB:
         """
         Save the spDB object and its associated Faiss index to disk.
         """
+        with _FAISS_LOCK:
+            # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
+            tmp = self.faiss_index
+            if self.faiss_index is not None:
+                faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
+                logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
-        # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
-        tmp = self.faiss_index
-        if self.faiss_index is not None:
-            faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
-            logger.info(f'Saving faiss index to disk at {faiss_index_path}')
+                faiss.write_index(self.faiss_index, faiss_index_path)
+                self.faiss_index = None
+                logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
-            faiss.write_index(self.faiss_index, faiss_index_path)
-            self.faiss_index = None
-            logger.info(f'faiss index saved to disk at {faiss_index_path}')
+            # save object to pickle file
+            spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
+            logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
+            with open(spdb_object_pickle_path, 'wb') as f:
+                pickle.dump(self, f)
+            logger.info(f'spDB object saved to disk at {spdb_object_pickle_path}')
 
-        # save object to pickle file
-        spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
-        logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
-        with open(spdb_object_pickle_path, 'wb') as f:
-            pickle.dump(self, f)
-        logger.info(f'spDB object saved to disk at {spdb_object_pickle_path}')
-
-        # Reset the faiss index
-        self.faiss_index = tmp
+            # Reset the faiss index
+            self.faiss_index = tmp
 
 
 def load_db(name: str, save_path: str = None) -> spDB:
