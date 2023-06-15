@@ -3,7 +3,9 @@ import logging
 import numpy as np
 import os
 import pickle
+import shutil
 import threading
+import time
 from faiss.contrib.exhaustive_search import knn
 
 from . import utils
@@ -18,7 +20,7 @@ def configure_logging(level):
     logging.basicConfig(
         level=level,
         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-        datefmt='%m-%d %H:%M'
+        datefmt='%m-%d %H:%M:%S'
     )
 
 
@@ -106,6 +108,7 @@ class spDB:
         :param vectors: A numpy array of vectors to be added.
         :param text: A list of text corresponding to the vectors.
         """
+        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
@@ -116,29 +119,36 @@ class spDB:
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
+        t0 = time.time()
         lmdb_utils.add_items_to_lmdb(
             db_path=self.lmdb_uncompressed_vectors_path,
             items=vectors,
             ids=ids,
             encode_fn=np.ndarray.tobytes
         )
+        logger.info(f'Added vectors to lmdb in {time.time() - t0} seconds')
+        t0 = time.time()
         lmdb_utils.add_items_to_lmdb(
             db_path=self.lmdb_text_path,
             items=text,
             ids=ids,
             encode_fn=str.encode
         )
+        logger.info(f'Added text to lmdb in {time.time() - t0} seconds')
 
         # If the index is not trained, don't add the vectors to the index
+        t0 = time.time()
+        logger.info('About to add vectors to faiss index')
         if self.faiss_index is not None:
             # TODO: transform vectors if necessary
             with _FAISS_LOCK:
                 self.faiss_index.add_with_ids(vectors, ids)
+        logger.info(f'Added vectors to faiss index in {time.time() - t0} seconds')
 
         self._vector_dimension = vectors.shape[1]
         self.save()
 
-    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False) -> None:
+    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False, num_clusters: int = None) -> None:
         """
         Train the Faiss index for efficient vector search.
 
@@ -189,20 +199,29 @@ class spDB:
         if use_two_level_clustering or training_method == 'two_level_clustering':
             logger.info('Training with two-level clustering')
             new_faiss_index = train.train_with_two_level_clustering(
-                self.lmdb_uncompressed_vectors_path,
-                self.vector_dimension,
-                pca_dimension,
-                opq_dimension,
-                compressed_vector_bytes,
-                self.max_memory_usage,
-                omit_opq
+                uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
+                vector_dimension=self.vector_dimension,
+                pca_dimension=pca_dimension,
+                opq_dimension=opq_dimension,
+                compressed_vector_bytes=compressed_vector_bytes,
+                max_memory_usage=self.max_memory_usage,
+                omit_opq=omit_opq,
+                num_clusters=num_clusters
             )
             with _FAISS_LOCK:
                 self.faiss_index = new_faiss_index
         else:
             logger.info('Training with subsampling')
             new_faiss_index = train.train_with_subsampling(
-                self.lmdb_uncompressed_vectors_path, self.vector_dimension, pca_dimension, opq_dimension, compressed_vector_bytes, self.max_memory_usage, omit_opq)
+                self.lmdb_uncompressed_vectors_path,
+                self.vector_dimension,
+                pca_dimension,
+                opq_dimension,
+                compressed_vector_bytes,
+                self.max_memory_usage,
+                omit_opq,
+                num_clusters=num_clusters
+            )
             with _FAISS_LOCK:
                 self.faiss_index = new_faiss_index
 
@@ -301,6 +320,10 @@ class spDB:
 
             # Reset the faiss index
             self.faiss_index = tmp
+
+    def delete(self):
+        """Remove the spdb object and its associated files from disk."""
+        shutil.rmtree(self.save_path)
 
 
 def load_db(name: str, save_path: str = None) -> spDB:
