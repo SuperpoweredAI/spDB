@@ -1,5 +1,3 @@
-""" Full end to end evaluation of the spDB using the fiqa Beir dataset """
-
 import os
 import numpy as np
 import pickle
