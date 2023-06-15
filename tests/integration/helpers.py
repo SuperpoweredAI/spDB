@@ -5,7 +5,7 @@ import pickle
 # get the absolute file path of this file
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
-def faiq_test_data() -> tuple[np.ndarray, list, np.ndarray, np.ndarray]:
+def fiqa_test_data() -> tuple[np.ndarray, list, np.ndarray, np.ndarray]:
 
     # Get the vectors
     with open(FILE_PATH + '/../data/fiqa_vectors.pickle', 'rb') as handle:

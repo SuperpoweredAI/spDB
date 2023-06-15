@@ -43,7 +43,7 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.query_k = 500
         self.gt_k = 50
         self.db = spDB(self.db_name)
-        self.vectors, self.text, self.queries, self.ground_truths = helpers.faiq_test_data()
+        self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
         self.db.add(self.vectors, self.text)
         self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
 
