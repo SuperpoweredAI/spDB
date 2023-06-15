@@ -30,6 +30,10 @@ class TestThreadSafety(unittest.TestCase):
         self.gt_k = 50
         self.db = spDB(self.db_name)
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
+        self.extended_vectors = np.tile(self.vectors, (10, 1))
+        self.extended_text = self.text * 10
+
+        # add vectors and train index
         self.db.add(self.vectors, self.text)
         self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq, num_clusters=20_000)
     
@@ -39,9 +43,6 @@ class TestThreadSafety(unittest.TestCase):
 
     def test__query_while_adding(self):
         # define helper functions for concurrent testing
-        def add_async():
-            self.db.add(long_vectors, long_text)
-
         def query_async():
             logger.info(f'starting short query after waiting {expected_add_time} seconds for lmdb adds to complete and long add to start')
             time.sleep(expected_add_time)  # simulate a slight delay before querying
@@ -53,9 +54,6 @@ class TestThreadSafety(unittest.TestCase):
 
             logger.info(f'time taken for single query (initiated after long faiss.add()): {time_taken}')
             self.assertGreaterEqual(time_taken, expected_add_time, "query() should take at least as long as add()")
-
-        long_vectors = np.tile(self.vectors, (10, 1))
-        long_text = self.text * 10
 
         # log expected query time for short query
         t0 = time.perf_counter()
@@ -70,7 +68,7 @@ class TestThreadSafety(unittest.TestCase):
         # Expected time for add() to complete.
         expected_add_time = 10
         # create and start add and query threads
-        add_thread = threading.Thread(target=add_async)
+        add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
         query_thread = threading.Thread(target=query_async)
         
         add_thread.start()
@@ -85,9 +83,6 @@ class TestThreadSafety(unittest.TestCase):
 
     def test__remove_while_adding(self):
         # define helper functions for concurrent testing
-        def add_async():
-            self.db.add(long_vectors, long_text)
-
         def remove_async():
             logger.info(f'going to start removal request after waiting {expected_add_time} seconds for lmdb adds to complete and long add to start')
             time.sleep(expected_add_time)  # simulate a slight delay before querying
@@ -99,9 +94,6 @@ class TestThreadSafety(unittest.TestCase):
 
             logger.info(f'time taken for remove request (initiated after long faiss.add()): {time_taken}')
             self.assertGreaterEqual(time_taken, expected_add_time, "remove() should take at least as long as add()")
-
-        long_vectors = np.tile(self.vectors, (10, 1))
-        long_text = self.text * 10
 
         # log expected query time for short query
         t0 = time.perf_counter()
@@ -116,7 +108,7 @@ class TestThreadSafety(unittest.TestCase):
         # Expected time for add() to complete.
         expected_add_time = 10
         # create and start add and query threads
-        add_thread = threading.Thread(target=add_async)
+        add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
         query_thread = threading.Thread(target=remove_async)
         
         add_thread.start()
