@@ -12,7 +12,7 @@ import helpers
 from spdb.spdb import spDB
 from spdb import lmdb_utils
 
-lmdb_utils.MAP_SIZE = 100 * 1024 * 1024 * 1024  # set testing map size to 100 GB
+lmdb_utils.MAP_SIZE = 10 * 1024 * 1024 * 1024  # set testing map size to 10 GB
 
 
 logger = logging.getLogger(__name__)
