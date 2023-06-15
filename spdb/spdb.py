@@ -14,8 +14,6 @@ from . import input_validation
 from . import train
 
 
-_FAISS_LOCK = threading.Lock()
-
 def configure_logging(level):
     logging.basicConfig(
         level=level,
@@ -52,6 +50,7 @@ class spDB:
         """
         self.name = name
         self.faiss_index = None
+        self._faiss_lock = threading.Lock()
         self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
@@ -80,6 +79,21 @@ class spDB:
         logger.info(f'lmdb uncompressed vectors database location: {self.lmdb_uncompressed_vectors_path}')
         self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
         logger.info(f'lmdb text database location: {self.lmdb_text_path}')
+
+    def __getstate__(self):
+        """
+        Get the state of the spDB object for pickling. We need to remove the _faiss_lock attribute because it is not picklable.
+        """
+        state = self.__dict__.copy()
+        del state['_faiss_lock']
+        return state
+    
+    def __setstate__(self, state):
+        """
+        Set the state of the spDB object for unpickling. We need to add the _faiss_lock attribute because it is not picklable.
+        """
+        self.__dict__.update(state)
+        self._faiss_lock = threading.Lock()
 
     @property
     def vector_dimension(self):
@@ -141,7 +155,7 @@ class spDB:
         logger.info('About to add vectors to faiss index')
         if self.faiss_index is not None:
             # TODO: transform vectors if necessary
-            with _FAISS_LOCK:
+            with self._faiss_lock:
                 self.faiss_index.add_with_ids(vectors, ids)
         logger.info(f'Added vectors to faiss index in {time.time() - t0} seconds')
 
@@ -208,7 +222,7 @@ class spDB:
                 omit_opq=omit_opq,
                 num_clusters=num_clusters
             )
-            with _FAISS_LOCK:
+            with self._faiss_lock:
                 self.faiss_index = new_faiss_index
         else:
             logger.info('Training with subsampling')
@@ -222,7 +236,7 @@ class spDB:
                 omit_opq,
                 num_clusters=num_clusters
             )
-            with _FAISS_LOCK:
+            with self._faiss_lock:
                 self.faiss_index = new_faiss_index
 
         self.save()
@@ -248,7 +262,7 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
-        with _FAISS_LOCK:
+        with self._faiss_lock:
             _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
@@ -278,7 +292,7 @@ class spDB:
             raise ValueError(reason)
 
         # Remove the vectors from the faiss index (has to be done first)
-        with _FAISS_LOCK:
+        with self._faiss_lock:
             self.faiss_index.remove_ids(vector_ids)
         # Save here in case something fails in the LMDB removal.
         # We can't have ids in the faiss index that don't exist in the LMDB
@@ -300,7 +314,7 @@ class spDB:
         """
         Save the spDB object and its associated Faiss index to disk.
         """
-        with _FAISS_LOCK:
+        with self._faiss_lock:
             # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
             tmp = self.faiss_index
             if self.faiss_index is not None:
