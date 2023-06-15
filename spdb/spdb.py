@@ -14,12 +14,15 @@ from . import input_validation
 from . import train
 
 
-def configure_logging(level):
+def configure_logging(level=logging.INFO):
     logging.basicConfig(
         level=level,
-        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+        format='%(asctime)s %(name)s:%(lineno)d in %(funcName)s() %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M:%S'
     )
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
 def get_spdb_path(name: str, save_path: str):
@@ -48,18 +51,13 @@ class spDB:
         :param vector_dimension: The dimension of the vectors to be stored in the database. 
         :param max_memory_usage: The maximum memory usage allowed for the construction and querying of the database, in bytes. Defaults to 4 GB.
         """
+        logger.info('Initializing spDB')
         self.name = name
         self.faiss_index = None
         self._faiss_lock = threading.Lock()
         self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
-
-        # configure the logging
-        configure_logging(logging_level)
-        global logger
-        logger = logging.getLogger(__name__)
-        logger.info('Initializing spDB')
 
         # Set the save path to the current directory if it is not specified
         self._save_path = get_spdb_path(name, save_path)
@@ -87,7 +85,7 @@ class spDB:
         state = self.__dict__.copy()
         del state['_faiss_lock']
         return state
-    
+
     def __setstate__(self, state):
         """
         Set the state of the spDB object for unpickling. We need to add the _faiss_lock attribute because it is not picklable.
@@ -114,6 +112,13 @@ class spDB:
     @property
     def lmdb_text_path(self):
         return self._lmdb_text_path
+    
+    @property
+    def num_vectors(self):
+        """
+        Get the number of vectors in the database.
+        """
+        return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
 
     def add(self, vectors: np.ndarray, text: list) -> None:
         """
@@ -262,9 +267,12 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
+        t0 = time.time()
         with self._faiss_lock:
             _, I = self.faiss_index.search(query_vector, preliminary_top_k)
+        logger.info(f'queried faiss index of compressed vectors in: {time.time() - t0}')
 
+        t0 = time.time()
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)
 
@@ -273,6 +281,7 @@ class spDB:
 
         reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
             self.lmdb_text_path, reranked_I, position_to_id_map)
+        logger.info(f'queried candidate list of full vectors from lmdb and brute force searched: {time.time() - t0}')
 
         return reranked_text, reranked_ids
     
@@ -292,12 +301,16 @@ class spDB:
             raise ValueError(reason)
 
         # Remove the vectors from the faiss index (has to be done first)
+        t0 = time.time()
+        logger.info(f'Removing {len(vector_ids)} vectors from the Faiss index')
         with self._faiss_lock:
             self.faiss_index.remove_ids(vector_ids)
         # Save here in case something fails in the LMDB removal.
         # We can't have ids in the faiss index that don't exist in the LMDB
+        logger.info(f'Finished removing vectors from the Faiss index in {time.time() - t0} seconds')
         self.save()
 
+        t0 = time.time()
         # remove vectors from LMDB
         lmdb_utils.remove_from_lmdb(
             db_path=self.lmdb_uncompressed_vectors_path,
@@ -309,6 +322,8 @@ class spDB:
             db_path=self.lmdb_text_path,
             ids=vector_ids
         )
+        logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
+
 
     def save(self) -> None:
         """
