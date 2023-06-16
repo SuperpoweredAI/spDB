@@ -78,6 +78,8 @@ class spDB:
         self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
         logger.info(f'lmdb text database location: {self.lmdb_text_path}')
 
+        self.save()
+
     def __getstate__(self):
         """
         Get the state of the spDB object for pickling. We need to remove the _faiss_lock attribute because it is not picklable.
@@ -127,6 +129,11 @@ class spDB:
         :param vectors: A numpy array of vectors to be added.
         :param text: A list of text corresponding to the vectors.
         """
+
+        # Check if the input data is a list, and if so, convert it to a numpy array
+        if isinstance(vectors, list):
+            vectors = np.array(vectors, dtype=np.float32)
+        
         logger.info(f'Adding {vectors.shape[0]} vectors to the database')
 
         # Validate the inputs
@@ -333,7 +340,8 @@ class spDB:
             # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
             tmp = self.faiss_index
             if self.faiss_index is not None:
-                faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
+                faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
+                #faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
                 logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
@@ -341,7 +349,8 @@ class spDB:
                 logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
             # save object to pickle file
-            spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
+            spdb_object_pickle_path = os.path.join(self.save_path, 'spdb_object.pickle')
+            #spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
             logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
             with open(spdb_object_pickle_path, 'wb') as f:
                 pickle.dump(self, f)
@@ -368,16 +377,18 @@ def load_db(name: str, save_path: str = None) -> spDB:
     save_path = get_spdb_path(name, save_path)
 
     # make sure the database exists
-    if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
+    if not os.path.exists(save_path):
+    #if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
         raise ValueError(f'No database named {name} exists in {save_path}')
 
     # load spDB object from pickle file
-    with open(os.path.join(save_path, f'{name}.pickle'), 'rb') as f:
+    with open(os.path.join(save_path, f'spdb_object.pickle'), 'rb') as f:
         db = pickle.load(f)
 
     # load faiss index from save path
     try:
-        index = faiss.read_index(os.path.join(db.save_path, f'{name}.index'))
+        index = faiss.read_index(os.path.join(db.save_path, f'faiss_index.index'))
+        #index = faiss.read_index(os.path.join(db.save_path, f'{name}.index'))
     except:
         index = None
     db.faiss_index = index
