@@ -266,6 +266,10 @@ class spDB:
         :return: two lists containing the reranked text and their corresponding IDs, respectively.
         """
 
+        # Check if the query vector is a list, and if so, convert it to a numpy array
+        if isinstance(query_vector, list):
+            query_vector = np.array(query_vector, dtype=np.float32)
+
         # query_vector needs to be a 1D array
         is_valid, reason = input_validation.validate_query(query_vector, self.vector_dimension)
         if not is_valid:
@@ -276,11 +280,9 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
-        t0 = time.time()
         with self._faiss_lock:
             _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
-        t0 = time.time()
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)
 
