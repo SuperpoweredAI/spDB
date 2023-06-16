@@ -10,14 +10,15 @@ from . import utils
 logger = logging.getLogger(__name__)
 
 
-def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:
+def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool, num_clusters: int = None) -> faiss.IndexPreTransform:
 
     # TODO: Figure out a better way of getting the number of vectors
     vector_ids = lmdb_utils.get_lmdb_index_ids(uncompressed_vectors_lmdb_path)
     num_vectors = len(vector_ids)
 
     # Get the parameters for training the index
-    num_clusters = utils.get_num_clusters(num_vectors)
+    if num_clusters is None:
+        num_clusters = utils.get_num_clusters(num_vectors)
     index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     logger.info(f'index_factory_parameter_string: {index_factory_parameter_string}')
 
@@ -41,14 +42,15 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
     return index
 
 
-def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool) -> faiss.IndexPreTransform:
+def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool, num_clusters: int = None) -> faiss.IndexPreTransform:
 
     # Load the vectors from the LMDB
     vector_ids = lmdb_utils.get_lmdb_index_ids(uncompressed_vectors_lmdb_path)
     num_vectors = len(vector_ids)
 
     # Get the parameters for training the index
-    num_clusters = utils.get_num_clusters(num_vectors)
+    if num_clusters is None:
+        num_clusters = utils.get_num_clusters(num_vectors)
     index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     logger.info(f'index_factory_parameter_string: {index_factory_parameter_string}')
 
