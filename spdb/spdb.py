@@ -212,16 +212,12 @@ class spDB:
             logger.error(reason)
             raise ValueError(reason)
 
-        # Load the vectors from the LMDB
-        vector_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
-        num_vectors = len(vector_ids)
-
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
             training_method = utils.determine_optimal_training_method(
                 max_memory_usage=self.max_memory_usage,
                 vector_dimension=self.vector_dimension,
-                num_vectors=num_vectors
+                num_vectors=self.num_vectors
             )
 
         if use_two_level_clustering or training_method == 'two_level_clustering':
