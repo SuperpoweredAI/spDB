@@ -21,11 +21,9 @@ app = FastAPI()
 # Load all databases located in the ~/.spdb folder into a dictionary
 db_path = os.path.join(os.path.expanduser("~"), ".spdb")
 db_names = os.listdir(db_path)
-print ("db_names", db_names)
 
 # Create a dictionary of databases keyed on name
 databases = {name: load_db(name) for name in db_names}
-print (databases)
 
 
 # Define request and response models
@@ -133,6 +131,14 @@ def reload_db(db_name: str):
        raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/db/{db_name}/delete")
+def delete_db(db_name: str):
+   if db_name not in databases:
+       raise HTTPException(status_code=404, detail="Database not found")
+   db = databases[db_name]
+   db.delete()
+   del databases[db_name]
+   return {"message": "Database deleted successfully"}
 
 
 """
