@@ -20,6 +20,8 @@ app = FastAPI()
 
 # Load all databases located in the ~/.spdb folder into a dictionary
 db_path = os.path.join(os.path.expanduser("~"), ".spdb")
+if not (os.path.exists(db_path)):
+   os.mkdir(db_path)
 db_names = os.listdir(db_path)
 
 # Create a dictionary of databases keyed on name
