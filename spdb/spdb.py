@@ -339,7 +339,6 @@ class spDB:
             tmp = self.faiss_index
             if self.faiss_index is not None:
                 faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
-                #faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
                 logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
@@ -348,7 +347,6 @@ class spDB:
 
             # save object to pickle file
             spdb_object_pickle_path = os.path.join(self.save_path, 'spdb_object.pickle')
-            #spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
             logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
             with open(spdb_object_pickle_path, 'wb') as f:
                 pickle.dump(self, f)
