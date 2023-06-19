@@ -78,6 +78,8 @@ class spDB:
         self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
         logger.info(f'lmdb text database location: {self.lmdb_text_path}')
 
+        self.save()
+
     def __getstate__(self):
         """
         Get the state of the spDB object for pickling. We need to remove the _faiss_lock attribute because it is not picklable.
@@ -127,6 +129,11 @@ class spDB:
         :param vectors: A numpy array of vectors to be added.
         :param text: A list of text corresponding to the vectors.
         """
+
+        # Check if the input data is a list, and if so, convert it to a numpy array
+        if isinstance(vectors, list):
+            vectors = np.array(vectors, dtype=np.float32)
+        
         logger.info(f'Adding {vectors.shape[0]} vectors to the database')
 
         # Validate the inputs
@@ -205,16 +212,12 @@ class spDB:
             logger.error(reason)
             raise ValueError(reason)
 
-        # Load the vectors from the LMDB
-        vector_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
-        num_vectors = len(vector_ids)
-
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
             training_method = utils.determine_optimal_training_method(
                 max_memory_usage=self.max_memory_usage,
                 vector_dimension=self.vector_dimension,
-                num_vectors=num_vectors
+                num_vectors=self.num_vectors
             )
 
         if use_two_level_clustering or training_method == 'two_level_clustering':
@@ -259,6 +262,10 @@ class spDB:
         :return: two lists containing the reranked text and their corresponding IDs, respectively.
         """
 
+        # Check if the query vector is a list, and if so, convert it to a numpy array
+        if isinstance(query_vector, list):
+            query_vector = np.array(query_vector, dtype=np.float32)
+
         # query_vector needs to be a 1D array
         is_valid, reason = input_validation.validate_query(query_vector, self.vector_dimension)
         if not is_valid:
@@ -269,11 +276,9 @@ class spDB:
             query_vector = query_vector.reshape((-1, self.vector_dimension))
 
         # query faiss index
-        t0 = time.time()
         with self._faiss_lock:
             _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
-        t0 = time.time()
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)
 
@@ -333,7 +338,7 @@ class spDB:
             # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
             tmp = self.faiss_index
             if self.faiss_index is not None:
-                faiss_index_path = os.path.join(self.save_path, f'{self.name}.index')
+                faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
                 logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
@@ -341,7 +346,7 @@ class spDB:
                 logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
             # save object to pickle file
-            spdb_object_pickle_path = os.path.join(self.save_path, f'{self.name}.pickle')
+            spdb_object_pickle_path = os.path.join(self.save_path, 'spdb_object.pickle')
             logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
             with open(spdb_object_pickle_path, 'wb') as f:
                 pickle.dump(self, f)
@@ -368,16 +373,18 @@ def load_db(name: str, save_path: str = None) -> spDB:
     save_path = get_spdb_path(name, save_path)
 
     # make sure the database exists
-    if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
+    if not os.path.exists(save_path):
+    #if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
         raise ValueError(f'No database named {name} exists in {save_path}')
 
     # load spDB object from pickle file
-    with open(os.path.join(save_path, f'{name}.pickle'), 'rb') as f:
+    with open(os.path.join(save_path, f'spdb_object.pickle'), 'rb') as f:
         db = pickle.load(f)
 
     # load faiss index from save path
     try:
-        index = faiss.read_index(os.path.join(db.save_path, f'{name}.index'))
+        index = faiss.read_index(os.path.join(db.save_path, f'faiss_index.index'))
+        #index = faiss.read_index(os.path.join(db.save_path, f'{name}.index'))
     except:
         index = None
     db.faiss_index = index
