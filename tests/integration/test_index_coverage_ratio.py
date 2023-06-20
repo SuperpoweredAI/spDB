@@ -1,11 +1,7 @@
-import os
-import sys
 import unittest
 
 import helpers
-
 from spdb.spdb import spDB
-from spdb import lmdb_utils
 
 
 class TestIndexCoverageRatio(unittest.TestCase):
