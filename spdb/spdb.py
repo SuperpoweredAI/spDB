@@ -120,7 +120,7 @@ class spDB:
         """
         Get the number of vectors in the database.
         """
-        return lmdb_utils.get_db_count(self.save_path, self.lmdb_uncompressed_vectors_path)
+        return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
     
     @property
     def trained_index_coverage_ratio(self):
