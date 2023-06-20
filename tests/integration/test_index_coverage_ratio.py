@@ -44,7 +44,7 @@ class TestIndexCoverageRatio(unittest.TestCase):
         self.assertEqual(coverage_ratio, 0.5)
 
         # Remove the first 30000 vectors (which is the length of the fiqa test data)
-        ids = range(30000)
+        ids = [i for i in range(30000)]
         self.db.remove(ids)
         # The index coverage ratio should be 0 now
         coverage_ratio = self.db.trained_index_coverage_ratio
