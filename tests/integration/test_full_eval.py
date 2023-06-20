@@ -1,7 +1,6 @@
 """ Full end to end evaluation of the spDB using the fiqa Beir dataset """
 
 import numpy as np
-import os
 import time
 import unittest
 
@@ -58,8 +57,6 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         # Evaluate the index
         recall, latency, all_unique_ids = evaluate(self.db, self.queries, self.ground_truths, self.query_k, self.gt_k)
 
-        print ("recall", recall)
-
         # Set the recall cutoff at 0.97 and less than 1
         # If recall is above 1, something went wrong
         self.assertGreater(recall, 0.97)
@@ -70,3 +67,15 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
+
+        # Retrain the index, but without two level clustering
+        self.db.train(False)
+
+        # Evaluate the index
+        recall, latency, all_unique_ids = evaluate(self.db, self.queries, self.ground_truths, self.query_k, self.gt_k)
+        self.assertGreater(recall, 0.97)
+        self.assertLessEqual(recall, 1)
+
+
+if __name__ == '__main__':
+    unittest.main()

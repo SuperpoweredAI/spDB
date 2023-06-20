@@ -50,15 +50,15 @@ class TestGetNumBatches(unittest.TestCase):
 class TestDetermineOptimalTrainingMethod(unittest.TestCase):
 
     ### Test determine_optimal_training_method ###
-    def test__determine_optimal_training_method__clustering(self):
+    def test__is_two_level_clustering_optimal__clustering(self):
         # 5M vectors
-        method = utils.determine_optimal_training_method(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 5000000)
-        self.assertEqual(method, 'two_level_clustering')
+        use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 5000000)
+        self.assertEqual(use_two_level_clustering, True)
     
-    def test__determine_optimal_training_method__subsampling(self):
+    def test__is_two_level_clustering_optimal__subsampling(self):
         # 1M vectors
-        method = utils.determine_optimal_training_method(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
-        self.assertEqual(method, 'subsampling')
+        use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
+        self.assertEqual(use_two_level_clustering, False)
 
 
 class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
@@ -87,3 +87,5 @@ class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
     def test__calculate_trained_index_coverage_ratio__no_lmdb_ids(self):
         coverage_ratio = utils.calculate_trained_index_coverage_ratio([], self.saved_index_ids)
         self.assertEqual(coverage_ratio, 0)
+        use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
+        self.assertEqual(use_two_level_clustering, False)

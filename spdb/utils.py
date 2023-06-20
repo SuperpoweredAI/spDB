@@ -76,7 +76,7 @@ def get_num_vectors_per_batch(max_memory_usage: int, vector_dimension: int) -> i
     # We don't really need to push memory requirements here, so we'll just use 1/4 of the max memory usage
     return int(num_vectors/4)
 
-def determine_optimal_training_method(max_memory_usage: int, vector_dimension: int, num_vectors: int) -> str:
+def is_two_level_clustering_optimal(max_memory_usage: int, vector_dimension: int, num_vectors: int) -> bool:
 
     memory_usage = get_training_memory_usage(vector_dimension, num_vectors)
     max_num_vectors = int((max_memory_usage / memory_usage) * num_vectors)
@@ -86,10 +86,10 @@ def determine_optimal_training_method(max_memory_usage: int, vector_dimension: i
     # faiss recommends a minimum of 39 vectors per cluster
     if num_vectors_per_cluster < 39:
         # We need to use the clustering method
-        return 'two_level_clustering'
+        return True
     else:
         # We can use the subsampling method
-        return 'subsampling'
+        return False
     
 def get_default_faiss_params(vector_dimension: int) -> dict:
     if vector_dimension < 150:
