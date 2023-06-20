@@ -214,13 +214,14 @@ class spDB:
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
-            training_method = utils.determine_optimal_training_method(
+            use_two_level_clustering = utils.is_two_level_clustering_optimal(
                 max_memory_usage=self.max_memory_usage,
                 vector_dimension=self.vector_dimension,
                 num_vectors=self.num_vectors
             )
+        
 
-        if use_two_level_clustering or training_method == 'two_level_clustering':
+        if use_two_level_clustering:
             logger.info('Training with two-level clustering')
             new_faiss_index = train.train_with_two_level_clustering(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
