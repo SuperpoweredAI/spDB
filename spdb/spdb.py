@@ -120,7 +120,25 @@ class spDB:
         """
         Get the number of vectors in the database.
         """
-        return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
+        return lmdb_utils.get_db_count(self.save_path, self.lmdb_uncompressed_vectors_path)
+    
+    @property
+    def trained_index_coverage_ratio(self):
+        """
+        Get the coverage ratio of the trained index.
+        """
+
+        if not os.path.exists(os.path.join(self.save_path, 'trained_index_vector_ids.pickle')):
+            return 0
+
+        # Get the current ids in the lmdb index
+        lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
+
+        # Load in the pickled index ids
+        with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'rb') as f:
+            saved_lmdb_index_ids = pickle.load(f)
+        
+        return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)
 
     def add(self, vectors: np.ndarray, text: list) -> list:
         """
@@ -248,6 +266,11 @@ class spDB:
             )
             with self._faiss_lock:
                 self.faiss_index = new_faiss_index
+        
+        lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
+        # Save the index ids to a pickle file
+        with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
+            pickle.dump(lmdb_index_ids, f)
 
         self.save()
 

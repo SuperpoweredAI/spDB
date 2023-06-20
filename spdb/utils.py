@@ -131,4 +131,12 @@ def get_default_faiss_params(vector_dimension: int) -> dict:
             "opq_dimension": 512,
             "compressed_vector_bytes": 128,
         }
-    
+
+def calculate_trained_index_coverage_ratio(lmdb_index_ids: list, saved_lmdb_index_ids: list):
+    if (len(saved_lmdb_index_ids) == 0 or len(lmdb_index_ids) == 0):
+        return 0
+    # Get the intersection of the two sets of IDs
+    intersection = set(saved_lmdb_index_ids).intersection(set(lmdb_index_ids))
+    # Calculate the coverage ratio
+    coverage_ratio = len(intersection) / len(lmdb_index_ids)
+    return coverage_ratio
