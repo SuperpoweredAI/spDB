@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool, num_clusters: int = None) -> faiss.IndexPreTransform:
 
-    # TODO: Figure out a better way of getting the number of vectors
+    # Load the vector ids from the LMDB
     vector_ids = lmdb_utils.get_lmdb_index_ids(uncompressed_vectors_lmdb_path)
     num_vectors = len(vector_ids)
 
@@ -32,7 +32,7 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
     logger.info(f'index.is_trained: {index.is_trained}')
 
     index = add_vectors_to_faiss(
-        uncompressed_vectors_lmdb_path, index, vector_ids, num_vectors, vector_dimension, max_memory_usage)
+        uncompressed_vectors_lmdb_path, index, vector_ids, vector_dimension, max_memory_usage)
     logger.info(f'added {index.ntotal} vectors to index')
 
     # Set the n_probe parameter
@@ -44,7 +44,7 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
 
 def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool, num_clusters: int = None) -> faiss.IndexPreTransform:
 
-    # Load the vectors from the LMDB
+    # Load the vector ids from the LMDB
     vector_ids = lmdb_utils.get_lmdb_index_ids(uncompressed_vectors_lmdb_path)
     num_vectors = len(vector_ids)
 
@@ -75,7 +75,7 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
     index.train(vectors)
 
     index = add_vectors_to_faiss(
-        uncompressed_vectors_lmdb_path, index, vector_ids, num_vectors, vector_dimension, max_memory_usage)
+        uncompressed_vectors_lmdb_path, index, vector_ids, vector_dimension, max_memory_usage)
     logger.info(f'added {index.ntotal} vectors to index')
 
     # Set the n_probe parameter (I think it makes sense here since n_probe is dependent on num_clusters)
@@ -85,8 +85,21 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
     return index
 
 
-def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.IndexPreTransform, vector_ids: list, num_vectors: int, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:
+def train_small_index(uncompressed_vectors_lmdb_path: str, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:
+    # This won't actually train the index, it will create a flat index and add the vectors to it
+
+    vector_ids = lmdb_utils.get_lmdb_index_ids(uncompressed_vectors_lmdb_path)
+
+    index = faiss.IndexFlat(vector_dimension)
+    faiss_index = faiss.IndexIDMap(index)
+    faiss_index = add_vectors_to_faiss(uncompressed_vectors_lmdb_path, faiss_index, vector_ids, vector_dimension, max_memory_usage)
+
+    return faiss_index
+
+
+def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.IndexPreTransform, vector_ids: list, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:
     
+    num_vectors = len(vector_ids)
     # Add all of the vectors to the index. We need to know the number of batches to do this in
     num_batches = utils.get_num_batches(
         num_vectors, vector_dimension, max_memory_usage)

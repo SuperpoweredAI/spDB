@@ -80,6 +80,20 @@ def get_lmdb_index_ids(db_path: str) -> list:
     return keys
 
 
+def get_lmdb_text_by_ids(text_lmdb_path: str, ids: list) -> list:
+    env = lmdb.open(text_lmdb_path)
+    # Get the ids from the LMDB
+    with env.begin() as txn:
+        text = []
+        for id in ids:
+            value = txn.get(str(id).encode('utf-8'))
+            # Convert from bytes to string
+            value = value.decode('utf-8')
+            text.append(value)
+    env.close()
+    return text
+
+
 def get_lmdb_vectors_by_ids(uncompressed_vectors_lmdb_path: str, ids: list) -> np.ndarray:
     env = lmdb.open(uncompressed_vectors_lmdb_path)
     # Get the ids from the LMDB

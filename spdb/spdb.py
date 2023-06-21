@@ -156,7 +156,7 @@ class spDB:
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
-            vectors, text, self.vector_dimension)
+            vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage)
         if not is_valid:
             raise ValueError(reason)
 
@@ -229,6 +229,19 @@ class spDB:
         if not is_valid:
             logger.error(reason)
             raise ValueError(reason)
+        
+        # If there are fewer than 5k vectors, don't train the index. We will just create a flat index.
+        if (self.num_vectors < 5000):
+            logger.info('Skipping training because there are fewer than 5k vectors')
+            index = train.train_small_index(
+                uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
+                vector_dimension=self.vector_dimension,
+                max_memory_usage=self.max_memory_usage
+            )
+            with self._faiss_lock:
+                self.faiss_index = index
+            self.save()
+            return
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
@@ -238,7 +251,6 @@ class spDB:
                 num_vectors=self.num_vectors
             )
         
-
         if use_two_level_clustering:
             logger.info('Training with two-level clustering')
             new_faiss_index = train.train_with_two_level_clustering(
@@ -301,7 +313,13 @@ class spDB:
 
         # query faiss index
         with self._faiss_lock:
-            _, I = self.faiss_index.search(query_vector, preliminary_top_k)
+            # For a flat index, there is no need for a preliminary top k
+            if (type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap):
+                _, I = self.faiss_index.search(query_vector, final_top_k)
+                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
+                return ranked_text, I[0]
+            else:
+                _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)
