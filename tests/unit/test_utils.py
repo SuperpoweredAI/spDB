@@ -29,7 +29,7 @@ class TestGetNProbe(unittest.TestCase):
             with self.subTest(num_clusters=num_clusters, expected_n_probe=expected_n_probe):
                 n_probe = utils.get_n_probe(num_clusters)
                 self.assertEqual(n_probe, expected_n_probe)
-    
+
 
 class TestGetTrainingMemoryUsage(unittest.TestCase):
 
@@ -57,5 +57,35 @@ class TestDetermineOptimalTrainingMethod(unittest.TestCase):
     
     def test__is_two_level_clustering_optimal__subsampling(self):
         # 1M vectors
+        use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
+        self.assertEqual(use_two_level_clustering, False)
+
+
+class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
+
+    # Create a list of 1000 vectors from 0 to 999
+    lmdb_ids = range(1000)
+    # Create a list of 100 vectors from 0 to 99
+    saved_index_ids = range(100)
+
+    ### Partial coverage ###
+    def test__calculate_trained_index_coverage_ratio__with_saved_index(self):
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.lmdb_ids, self.saved_index_ids)
+        self.assertEqual(coverage_ratio, 0.1)
+    
+    ### Full coverage ###
+    def test__calculate_trained_index_coverage_ratio__with_saved_index(self):
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.saved_index_ids, self.lmdb_ids)
+        self.assertEqual(coverage_ratio, 1)
+
+    ### No saved ids (case where an index hasn't been trained yet) ###
+    def test__calculate_trained_index_coverage_ratio__no_saved_index(self):
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.lmdb_ids, [])
+        self.assertEqual(coverage_ratio, 0)
+    
+    ### No lmdb ids (case where someone removed all vectors, but previously trained an index) ###
+    def test__calculate_trained_index_coverage_ratio__no_lmdb_ids(self):
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio([], self.saved_index_ids)
+        self.assertEqual(coverage_ratio, 0)
         use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
         self.assertEqual(use_two_level_clustering, False)
