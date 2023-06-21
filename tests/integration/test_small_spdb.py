@@ -2,11 +2,7 @@
 
 import numpy as np
 import unittest
-import os
-import sys
 import faiss
-
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
 
 import helpers
 
@@ -64,7 +60,3 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
         self.db.delete()
-
-
-if __name__ == '__main__':
-    unittest.main()
