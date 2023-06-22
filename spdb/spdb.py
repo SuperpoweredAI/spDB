@@ -159,6 +159,12 @@ class spDB:
             vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage)
         if not is_valid:
             raise ValueError(reason)
+        
+        if (type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap):
+            # Check the number of vectors in the index
+            if self.faiss_index.ntotal + vectors.shape[0] >= 50000:
+                # Show a warning message
+                logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
 
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
@@ -315,6 +321,10 @@ class spDB:
         with self._faiss_lock:
             # For a flat index, there is no need for a preliminary top k
             if (type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap):
+                # Check the number of vectors in the index
+                if self.faiss_index.ntotal >= 50000:
+                    # Show a warning message
+                    logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
                 _, I = self.faiss_index.search(query_vector, final_top_k)
                 ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
                 return ranked_text, I[0]
