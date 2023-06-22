@@ -1,10 +1,6 @@
 import unittest
 import numpy as np
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
 from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
@@ -121,6 +117,3 @@ class TestRemoveInputParameters(unittest.TestCase):
             is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
-
-if __name__ == '__main__':
-    unittest.main()

@@ -151,14 +151,14 @@ class spDB:
         # Check if the input data is a list, and if so, convert it to a numpy array
         if isinstance(vectors, list):
             vectors = np.array(vectors, dtype=np.float32)
-        
-        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
             vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage)
         if not is_valid:
             raise ValueError(reason)
+        
+        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
         
         if (type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap):
             # Check the number of vectors in the index
