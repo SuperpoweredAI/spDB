@@ -324,7 +324,7 @@ class spDB:
         # query faiss index
         with self._faiss_lock:
             # For a flat index, there is no need for a preliminary top k
-            if (type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap):
+            if (str(type(self.faiss_index)) == 'faiss.swigfaiss_avx2.IndexIDMap'):
                 # Check the number of vectors in the index
                 if self.faiss_index.ntotal >= 50000:
                     # Show a warning message

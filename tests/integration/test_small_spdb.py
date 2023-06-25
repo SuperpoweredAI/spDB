@@ -6,6 +6,10 @@ import faiss
 
 import helpers
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
+
 from spdb.spdb import spDB
 
 
@@ -60,3 +64,6 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
         self.db.delete()
+
+if __name__ == '__main__':
+    unittest.main()
