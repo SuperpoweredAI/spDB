@@ -152,7 +152,9 @@ class spDB:
         if isinstance(vectors, list):
             vectors = np.array(vectors, dtype=np.float32)
         
-        is_flat_index = type(self.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap
+        is_flat_index = False
+        if (str(type(self.faiss_index)) == 'faiss.swigfaiss_avx2.IndexIDMap'):
+            is_flat_index = True
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
