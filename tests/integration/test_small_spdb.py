@@ -6,10 +6,6 @@ import faiss
 
 import helpers
 
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
 from spdb.spdb import spDB
 
 
@@ -47,8 +43,7 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.db.train(False)
         # Make sure the vectors are in the index
         self.assertTrue(self.db.faiss_index.ntotal, 2500)
-
-        self.assertTrue((type(self.db.faiss_index) == faiss.swigfaiss_avx2.IndexIDMap))
+        self.assertTrue(str(type(self.db.faiss_index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>")
 
         vectors = self.vectors[2500:]
         text = self.text[2500:]
@@ -64,6 +59,3 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
         self.db.delete()
-
-if __name__ == '__main__':
-    unittest.main()

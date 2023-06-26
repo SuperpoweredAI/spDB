@@ -152,9 +152,7 @@ class spDB:
         if isinstance(vectors, list):
             vectors = np.array(vectors, dtype=np.float32)
         
-        is_flat_index = False
-        if (str(type(self.faiss_index)) == 'faiss.swigfaiss_avx2.IndexIDMap'):
-            is_flat_index = True
+        is_flat_index = utils.check_is_flat_index(self.faiss_index)
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
@@ -324,7 +322,8 @@ class spDB:
         # query faiss index
         with self._faiss_lock:
             # For a flat index, there is no need for a preliminary top k
-            if (str(type(self.faiss_index)) == 'faiss.swigfaiss_avx2.IndexIDMap'):
+            is_flat_index = utils.check_is_flat_index(self.faiss_index)
+            if is_flat_index:
                 # Check the number of vectors in the index
                 if self.faiss_index.ntotal >= 50000:
                     # Show a warning message

@@ -89,3 +89,14 @@ class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
         self.assertEqual(coverage_ratio, 0)
         use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
         self.assertEqual(use_two_level_clustering, False)
+
+
+class TestCheckIsFlatIndex(unittest.TestCase):
+    
+    def test__check_is_flat_index__True(self):
+        is_index_flat = utils.check_is_flat_index("<class 'faiss.swigfaiss_avx2.IndexIDMap'>")
+        self.assertTrue(is_index_flat)
+    
+    def test__check_is_flat_index__False(self):
+        is_index_flat = utils.check_is_flat_index("<class 'faiss.swigfaiss_avx2.IndexPreTransform'>")
+        self.assertFalse(is_index_flat)
