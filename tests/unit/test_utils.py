@@ -97,6 +97,7 @@ class TestCheckIsFlatIndex(unittest.TestCase):
     def test__check_is_flat_index__True(self):
         faiss_index = faiss.IndexFlat(768)
         faiss_index = faiss.IndexIDMap(faiss_index)
+        print (type(faiss_index))
         is_index_flat = utils.check_is_flat_index(faiss_index)
         self.assertTrue(is_index_flat)
     
