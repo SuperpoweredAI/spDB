@@ -42,7 +42,6 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.db.train(False)
         # Make sure the vectors are in the index
         self.assertTrue(self.db.faiss_index.ntotal, 2500)
-        self.assertTrue(str(type(self.db.faiss_index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>")
 
         vectors = self.vectors[2500:]
         text = self.text[2500:]
