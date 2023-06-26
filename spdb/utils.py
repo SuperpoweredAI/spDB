@@ -143,7 +143,7 @@ def calculate_trained_index_coverage_ratio(lmdb_index_ids: list, saved_lmdb_inde
 
 def check_is_flat_index(index) -> bool:
 
-    if (str(type(index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>"):
+    if (str(type(index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>" or str(type(index)) == "<class 'faiss.swigfaiss.IndexIDMap'>"):
         return True
     else:
         return False
