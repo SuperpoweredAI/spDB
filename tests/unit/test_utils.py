@@ -1,4 +1,5 @@
 import unittest
+import faiss
 
 from spdb import utils
 
@@ -94,9 +95,12 @@ class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
 class TestCheckIsFlatIndex(unittest.TestCase):
     
     def test__check_is_flat_index__True(self):
-        is_index_flat = utils.check_is_flat_index("<class 'faiss.swigfaiss_avx2.IndexIDMap'>")
+        faiss_index = faiss.IndexFlat(768)
+        faiss_index = faiss.IndexIDMap(faiss_index)
+        is_index_flat = utils.check_is_flat_index(faiss_index)
         self.assertTrue(is_index_flat)
     
     def test__check_is_flat_index__False(self):
-        is_index_flat = utils.check_is_flat_index("<class 'faiss.swigfaiss_avx2.IndexPreTransform'>")
+        faiss_index = faiss.index_factory(768, "PCA256,IVF4096,PQ32")
+        is_index_flat = utils.check_is_flat_index(faiss_index)
         self.assertFalse(is_index_flat)
