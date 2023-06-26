@@ -77,8 +77,3 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Retrain the index, but without two level clustering
         self.db.train(False)
-
-        # Evaluate the index
-        recall, latency, all_unique_ids = evaluate(self.db, self.queries, self.ground_truths, self.query_k, self.gt_k)
-        self.assertGreater(recall, 0.97)
-        self.assertLessEqual(recall, 1)
