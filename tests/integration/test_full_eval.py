@@ -16,9 +16,11 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
 
     start_time = time.time()
     all_unique_ids = []
+    all_cosine_similarity = []
     total_sum = 0
     for i in range(queries.shape[0]):
-        _, reranked_I = db.query(queries[i], query_k, gt_k)
+        _, reranked_I, cosine_similarity = db.query(queries[i], query_k, gt_k)
+        all_cosine_similarity.append(cosine_similarity)
         # compute recall
         total_sum += sum([1 for x in reranked_I[:gt_k] if x in ground_truths[i, :gt_k]]) / gt_k
         unique_ids = np.unique(reranked_I)
@@ -28,7 +30,7 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
     recall = total_sum / ground_truths.shape[0]
     latency = (end_time - start_time) * 1000 / queries.shape[0]
 
-    return recall, latency, all_unique_ids
+    return recall, latency, all_unique_ids, all_cosine_similarity
 
 
 class TestFullSpdbEvaluation(unittest.TestCase):
@@ -55,7 +57,12 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         # Train the index
 
         # Evaluate the index
-        recall, latency, all_unique_ids = evaluate(self.db, self.queries, self.ground_truths, self.query_k, self.gt_k)
+        recall, latency, all_unique_ids, all_cosine_similarity = evaluate(
+            self.db, self.queries, self.ground_truths, self.query_k, self.gt_k
+        )
+
+        # Make sure cosine similarity is between 0 and 1
+        self.assertTrue(all([all(x) >= 0.0 and all(x) <= 1.0 for x in all_cosine_similarity]))
 
         # Set the recall cutoff at 0.97 and less than 1
         # If recall is above 1, something went wrong
