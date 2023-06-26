@@ -1,4 +1,5 @@
 import unittest
+import faiss
 
 from spdb import utils
 
@@ -89,3 +90,17 @@ class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
         self.assertEqual(coverage_ratio, 0)
         use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
         self.assertEqual(use_two_level_clustering, False)
+
+
+class TestCheckIsFlatIndex(unittest.TestCase):
+    
+    def test__check_is_flat_index__True(self):
+        faiss_index = faiss.IndexFlat(768)
+        faiss_index = faiss.IndexIDMap(faiss_index)
+        is_index_flat = utils.check_is_flat_index(faiss_index)
+        self.assertTrue(is_index_flat)
+    
+    def test__check_is_flat_index__False(self):
+        faiss_index = faiss.index_factory(768, "PCA256,IVF4096,PQ32")
+        is_index_flat = utils.check_is_flat_index(faiss_index)
+        self.assertFalse(is_index_flat)

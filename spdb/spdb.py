@@ -152,13 +152,21 @@ class spDB:
         if isinstance(vectors, list):
             vectors = np.array(vectors, dtype=np.float32)
         
-        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
+        is_flat_index = utils.check_is_flat_index(self.faiss_index)
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
-            vectors, text, self.vector_dimension)
+            vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
         if not is_valid:
             raise ValueError(reason)
+        
+        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
+        
+        if is_flat_index:
+            # Check the number of vectors in the index
+            if self.faiss_index.ntotal + vectors.shape[0] >= 50000:
+                # Show a warning message
+                logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
 
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
@@ -229,6 +237,19 @@ class spDB:
         if not is_valid:
             logger.error(reason)
             raise ValueError(reason)
+        
+        # If there are fewer than 5k vectors, don't train the index. We will just create a flat index.
+        if (self.num_vectors < 5000):
+            logger.info('Skipping training because there are fewer than 5k vectors')
+            index = train.train_small_index(
+                uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
+                vector_dimension=self.vector_dimension,
+                max_memory_usage=self.max_memory_usage
+            )
+            with self._faiss_lock:
+                self.faiss_index = index
+            self.save()
+            return
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
@@ -238,7 +259,6 @@ class spDB:
                 num_vectors=self.num_vectors
             )
         
-
         if use_two_level_clustering:
             logger.info('Training with two-level clustering')
             new_faiss_index = train.train_with_two_level_clustering(
@@ -301,7 +321,18 @@ class spDB:
 
         # query faiss index
         with self._faiss_lock:
-            _, I = self.faiss_index.search(query_vector, preliminary_top_k)
+            # For a flat index, there is no need for a preliminary top k
+            is_flat_index = utils.check_is_flat_index(self.faiss_index)
+            if is_flat_index:
+                # Check the number of vectors in the index
+                if self.faiss_index.ntotal >= 50000:
+                    # Show a warning message
+                    logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
+                _, I = self.faiss_index.search(query_vector, final_top_k)
+                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
+                return ranked_text, I[0]
+            else:
+                _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
         corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
             self.lmdb_uncompressed_vectors_path, I)

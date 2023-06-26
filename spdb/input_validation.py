@@ -1,5 +1,6 @@
 import numpy as np
 import re
+from . import utils
 
 def validate_database_name(name: str) -> tuple[bool, str]:
     # Make sure the DB name is valid. It must be valid for a file name
@@ -49,7 +50,7 @@ def validate_train(vector_dimension: int, pca_dimension: int, opq_dimension: int
     return True, "Success"
 
 
-def validate_add(vectors: np.ndarray, text: list, vector_dimension: int) -> tuple[bool, str]:
+def validate_add(vectors: np.ndarray, text: list, vector_dimension: int, num_vectors: int, max_memory_usage: int, is_flat_index: bool) -> tuple[bool, str]:
         
     # Make sure the data is the correct type (probably a numpy array)
     if not isinstance(vectors, np.ndarray):
@@ -62,6 +63,12 @@ def validate_add(vectors: np.ndarray, text: list, vector_dimension: int) -> tupl
     # Check that the number of vectors is the same as the number of text items
     if vectors.shape[0] != len(text):
         return False, "Number of vectors does not match number of text items. Number of vectors: " + str(vectors.shape[0]) + " Number of text items: " + str(len(text))
+    
+    if is_flat_index:
+        # Make sure adding the vectors won't exceed the max memory usage
+        new_memory_usage = utils.get_training_memory_usage(vectors.shape[1], num_vectors + vectors.shape[0])
+        if (max_memory_usage is not None and new_memory_usage > max_memory_usage):
+            return False, "Adding these vectors will exceed the max memory usage. Max memory usage: " + str(max_memory_usage) + " New memory usage: " + str(new_memory_usage)
 
     return True, "Success"
 

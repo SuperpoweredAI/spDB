@@ -140,3 +140,10 @@ def calculate_trained_index_coverage_ratio(lmdb_index_ids: list, saved_lmdb_inde
     # Calculate the coverage ratio
     coverage_ratio = len(intersection) / len(lmdb_index_ids)
     return coverage_ratio
+
+def check_is_flat_index(index) -> bool:
+
+    if (str(type(index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>" or str(type(index)) == "<class 'faiss.swigfaiss.IndexIDMap'>"):
+        return True
+    else:
+        return False

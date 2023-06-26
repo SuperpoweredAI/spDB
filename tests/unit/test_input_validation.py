@@ -68,26 +68,29 @@ class TestAddInputParameters(unittest.TestCase):
     vector_array = np.random.rand(10, 768)
     invalid_array = np.random.rand(10, 512)
     text = ["test"] * 10
+    max_memory = 4 * 1024 * 1024 * 1024
+    num_vectors = 10
 
     valid_add_parameters = [
-        (vector_array, text, 768),
-        (vector_array, text, None),
+        (vector_array, text, 768, num_vectors, max_memory, False),
+        (vector_array, text, None, num_vectors, max_memory, False),
     ]
 
     invalid_add_parameters = [
-        ([1, 2, 3], text, 768, "Vectors are not the correct type. Expected type: numpy array. Actual type"),
-        (invalid_array, text, 768, "Vector is not the correct size. Expected size"),
-        (vector_array, text[0:5], 768, "Number of vectors does not match number of text items. Number of vectors"),
+        ([1, 2, 3], text, 768, num_vectors, max_memory, False, "Vectors are not the correct type. Expected type: numpy array. Actual type"),
+        (invalid_array, text, 768, num_vectors, max_memory, False, "Vector is not the correct size. Expected size"),
+        (vector_array, text[0:5], 768, num_vectors, max_memory, False, "Number of vectors does not match number of text items. Number of vectors"),
+        (vector_array, text, 768, num_vectors, 1, True, "Adding these vectors will exceed the max memory usage. Max memory usage"),
     ]
 
     def test__validate_add__valid_parameters(self):
-        for vectors, text, vector_dimension in self.valid_add_parameters:
-            is_valid, _ = input_validation.validate_add(vectors, text, vector_dimension)
+        for vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
+            is_valid, _ = input_validation.validate_add(vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index)
             self.assertTrue(is_valid)
 
     def test__validate_add__invalid_parameters(self):
-        for vectors, text, vector_dimension, expected_reason in self.invalid_add_parameters:
-            is_valid, reason = input_validation.validate_add(vectors, text, vector_dimension)
+        for vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index, expected_reason in self.invalid_add_parameters:
+            is_valid, reason = input_validation.validate_add(vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
 
