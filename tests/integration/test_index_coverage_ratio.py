@@ -25,7 +25,8 @@ class TestIndexCoverageRatio(unittest.TestCase):
         self.assertEqual(coverage_ratio, 0)
 
         # Test that the index coverage ratio is still 0 after adding vectors
-        self.db.add(self.vectors, self.text)
+        add_data = [(self.vectors[i], {"text": self.text[i]}) for i in range(len(self.vectors))]
+        self.db.add(add_data)
         coverage_ratio = self.db.trained_index_coverage_ratio
         self.assertEqual(coverage_ratio, 0)
 
@@ -35,7 +36,7 @@ class TestIndexCoverageRatio(unittest.TestCase):
         self.assertEqual(coverage_ratio, 1)
 
         # Test that the index coverage ratio is 0.5 after adding another set of vectors
-        self.db.add(self.vectors, self.text)
+        self.db.add(add_data)
         coverage_ratio = self.db.trained_index_coverage_ratio
         self.assertEqual(coverage_ratio, 0.5)
 
