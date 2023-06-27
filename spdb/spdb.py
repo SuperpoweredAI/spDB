@@ -75,8 +75,8 @@ class spDB:
         # create the lmdb databases
         self._lmdb_uncompressed_vectors_path = lmdb_utils.create_lmdb(self.lmdb_path, 'uncompressed_vectors')
         logger.info(f'lmdb uncompressed vectors database location: {self.lmdb_uncompressed_vectors_path}')
-        self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
-        logger.info(f'lmdb text database location: {self.lmdb_text_path}')
+        self._lmdb_metadata_path = lmdb_utils.create_lmdb(self.lmdb_path, 'metadata')
+        logger.info(f'lmdb text database location: {self.lmdb_metadata_path}')
 
         self.save()
 
@@ -112,8 +112,8 @@ class spDB:
         return self._lmdb_uncompressed_vectors_path
 
     @property
-    def lmdb_text_path(self):
-        return self._lmdb_text_path
+    def lmdb_metadata_path(self):
+        return self._lmdb_metadata_path
     
     @property
     def num_vectors(self):
@@ -140,13 +140,16 @@ class spDB:
         
         return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)
 
-    def add(self, vectors: np.ndarray, text: list) -> list:
+    def add(self, data: list[tuple[np.ndarray, dict]]) -> list:
         """
         Add vectors and their corresponding text to the database.
 
-        :param vectors: A numpy array of vectors to be added.
-        :param text: A list of text corresponding to the vectors.
+        :param data: A list of tuples containing a vector and the associated metadata.
+        The metadata must be a dictionary
         """
+
+        vectors = [d[0] for d in data]
+        metadata = [d[1] for d in data]
 
         # Check if the input data is a list, and if so, convert it to a numpy array
         if isinstance(vectors, list):
@@ -156,7 +159,7 @@ class spDB:
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_add(
-            vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
+            vectors, metadata, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
         if not is_valid:
             raise ValueError(reason)
         
@@ -181,8 +184,8 @@ class spDB:
         logger.info(f'Added vectors to lmdb in {time.time() - t0} seconds')
         t0 = time.time()
         lmdb_utils.add_items_to_lmdb(
-            db_path=self.lmdb_text_path,
-            items=text,
+            db_path=self.lmdb_metadata_path,
+            items=metadata,
             ids=ids,
             encode_fn=str.encode
         )
@@ -329,7 +332,7 @@ class spDB:
                     # Show a warning message
                     logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
                 _, I = self.faiss_index.search(query_vector, final_top_k)
-                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
+                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_metadata_path, I.tolist()[0])
                 return ranked_text, I[0]
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
@@ -341,7 +344,7 @@ class spDB:
         _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
 
         reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
-            self.lmdb_text_path, reranked_I, position_to_id_map)
+            self.lmdb_metadata_path, reranked_I, position_to_id_map)
 
         return reranked_text, reranked_ids
     
@@ -379,7 +382,7 @@ class spDB:
 
         # remove text from LMDB
         lmdb_utils.remove_from_lmdb(
-            db_path=self.lmdb_text_path,
+            db_path=self.lmdb_metadata_path,
             ids=vector_ids
         )
         logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
