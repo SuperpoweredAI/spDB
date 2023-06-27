@@ -108,8 +108,10 @@ def query(db_name: str, query_input: QueryInput):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   reranked_text, reranked_ids = db.query(query_vector=query_input.query_vector, preliminary_top_k=query_input.preliminary_top_k, final_top_k=query_input.final_top_k)
-   return QueryOutput(text=reranked_text, ids=reranked_ids)
+   reranked_text, reranked_ids, cosine_similarity = db.query(
+      query_vector=query_input.query_vector, preliminary_top_k=query_input.preliminary_top_k, final_top_k=query_input.final_top_k
+   )
+   return QueryOutput(text=reranked_text, ids=reranked_ids, cosine_similarity=cosine_similarity)
 
 
 @app.post("/db/{db_name}/save")
