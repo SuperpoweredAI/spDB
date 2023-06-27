@@ -3,10 +3,6 @@
 import numpy as np
 import unittest
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
 import helpers
 
 from spdb.spdb import spDB
@@ -21,7 +17,7 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
         results = db.query(queries[i], query_k, gt_k)
         reranked_I = results["ids"]
         cosine_similarity = results["cosine_similarity"]
-        
+
         all_cosine_similarity.append(cosine_similarity)
         # compute recall
         total_sum += sum([1 for x in reranked_I[:gt_k] if x in ground_truths[i, :gt_k]]) / gt_k
@@ -80,6 +76,3 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
         self.db.delete()
-
-if __name__ == '__main__':
-    unittest.main()

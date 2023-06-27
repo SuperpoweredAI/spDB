@@ -4,10 +4,6 @@ import numpy as np
 import time
 import unittest
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
 import helpers
 
 from spdb.spdb import spDB
@@ -87,6 +83,3 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Retrain the index, but without two level clustering
         self.db.train(False)
-
-if __name__ == '__main__':
-    unittest.main()
