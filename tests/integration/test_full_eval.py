@@ -62,7 +62,9 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         )
 
         # Make sure cosine similarity is between 0 and 1
-        self.assertTrue(all([all(x) >= 0.0 and all(x) <= 1.0 for x in all_cosine_similarity]))
+        # all_cosine_similarity is a list of lists
+        all_cosine_similarity = [item for sublist in all_cosine_similarity for item in sublist]
+        self.assertTrue(all([x >= 0 and x <= 1 for x in all_cosine_similarity]))
 
         # Set the recall cutoff at 0.97 and less than 1
         # If recall is above 1, something went wrong
