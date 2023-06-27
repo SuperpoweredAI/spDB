@@ -1,6 +1,7 @@
 import numpy as np
 import lmdb
 import os
+import json
 from typing import Callable
 
 
@@ -16,12 +17,14 @@ def create_lmdb(lmdb_path: str, db_name: str) -> str:
     return db_path
 
 
-def add_items_to_lmdb(db_path: str, items, ids: list, encode_fn: Callable) -> None:
+def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable) -> None:
     # Add the text to LMDB
     env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
     with env.begin(write=True) as txn:
-        for i, t in enumerate(items):
-            txn.put(str(ids[i]).encode('utf-8'), encode_fn(t))
+        for i, item in enumerate(items):
+            if isinstance(item, dict):
+                item = json.dumps(item)
+            txn.put(str(ids[i]).encode('utf-8'), encode_fn(item))
     env.close()
     # TODO: handle the case where the text upload fails
 
@@ -53,21 +56,21 @@ def get_ranked_vectors(uncompressed_vectors_lmdb_path: str, I: np.ndarray) -> tu
     return corpus_vectors, position_to_id_map
 
 
-def get_reranked_text(text_lmdb_path: str, reranked_I: np.ndarray, position_to_id_map: dict) -> list:
-    # retrieve text for top_k results from LMDB
-    reranked_text = []
-    reranked_ids = []
+def get_reranked_metadata(text_lmdb_path: str, reranked_ids: np.ndarray) -> list:
+    # retrieve metadata for top_k results from LMDB
+
+    reranked_metadata = []
     env = lmdb.open(text_lmdb_path)
     with env.begin() as txn:
-        for position in reranked_I[0]:
-            id = position_to_id_map[position]
+        for id in reranked_ids:
             value = txn.get(str(id).encode('utf-8'))
             # Convert from bytes to string
             value = value.decode('utf-8')
-            reranked_text.append(value)
-            reranked_ids.append(id)
+            # Convert from json string to dict
+            value = json.loads(value)
+            reranked_metadata.append(value)
     env.close()
-    return reranked_text, reranked_ids
+    return reranked_metadata
 
 
 def get_lmdb_index_ids(db_path: str) -> list:
@@ -80,18 +83,20 @@ def get_lmdb_index_ids(db_path: str) -> list:
     return keys
 
 
-def get_lmdb_text_by_ids(text_lmdb_path: str, ids: list) -> list:
+def get_lmdb_metadata_by_ids(text_lmdb_path: str, ids: list) -> list:
     env = lmdb.open(text_lmdb_path)
     # Get the ids from the LMDB
     with env.begin() as txn:
-        text = []
+        metadata = []
         for id in ids:
             value = txn.get(str(id).encode('utf-8'))
             # Convert from bytes to string
             value = value.decode('utf-8')
-            text.append(value)
+            # Convert from json string to dict
+            value = json.loads(value)
+            metadata.append(value)
     env.close()
-    return text
+    return metadata
 
 
 def get_lmdb_vectors_by_ids(uncompressed_vectors_lmdb_path: str, ids: list) -> np.ndarray:

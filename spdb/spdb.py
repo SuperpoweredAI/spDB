@@ -148,22 +148,16 @@ class spDB:
         The metadata must be a dictionary
         """
 
-        vectors = [d[0] for d in data]
-        metadata = [d[1] for d in data]
-
-        # Check if the input data is a list, and if so, convert it to a numpy array
-        if isinstance(vectors, list):
-            vectors = np.array(vectors, dtype=np.float32)
-        
+        # Check if the index is flat or not
         is_flat_index = utils.check_is_flat_index(self.faiss_index)
 
         # Validate the inputs
-        is_valid, reason = input_validation.validate_add(
-            vectors, metadata, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
+        vectors, metadata, is_valid, reason = input_validation.validate_add(
+            data, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
         if not is_valid:
             raise ValueError(reason)
         
-        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
+        logger.info(f'Adding {len(vectors)} vectors to the database')
         
         if is_flat_index:
             # Check the number of vectors in the index
@@ -334,9 +328,14 @@ class spDB:
                 _, I = self.faiss_index.search(query_vector, final_top_k)
                 corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
                     self.lmdb_uncompressed_vectors_path, I)
-                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_metadata_path, I.tolist()[0])
+                metadata = lmdb_utils.get_lmdb_metadata_by_ids(self.lmdb_metadata_path, I.tolist()[0])
                 cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
-                return ranked_text, I[0], cosine_similarity
+                
+                return {
+                    "ids": I[0],
+                    'metadata': metadata,
+                    'cosine_similarity': cosine_similarity
+                }
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
@@ -350,11 +349,18 @@ class spDB:
         final_vectors = corpus_vectors[reranked_I[0]]
         cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
 
-        reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
-            self.lmdb_metadata_path, reranked_I, position_to_id_map
+        # Get the ids of the reranked vectors
+        reranked_ids = [position_to_id_map[position] for position in reranked_I[0]]
+
+        reranked_metadata = lmdb_utils.get_reranked_metadata(
+            self.lmdb_metadata_path, reranked_ids
         )
 
-        return reranked_text, reranked_ids, cosine_similarity
+        return {
+            "ids": reranked_ids,
+            'metadata': reranked_metadata,
+            'cosine_similarity': cosine_similarity
+        }
     
     def remove(self, vector_ids: np.ndarray) -> None:
         """
