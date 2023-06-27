@@ -332,8 +332,8 @@ class spDB:
                 corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
                     self.lmdb_uncompressed_vectors_path, I)
                 ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
-                all_cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
-                return ranked_text, I[0], all_cosine_similarity
+                cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
+                return ranked_text, I[0], cosine_similarity
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
@@ -345,13 +345,13 @@ class spDB:
 
         # Get the final vectors. reranked_I is a list of indices in the corpus_vectors array
         final_vectors = corpus_vectors[reranked_I[0]]
-        all_cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
+        cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
 
         reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
             self.lmdb_text_path, reranked_I, position_to_id_map
         )
 
-        return reranked_text, reranked_ids, all_cosine_similarity
+        return reranked_text, reranked_ids, cosine_similarity
     
     def remove(self, vector_ids: np.ndarray) -> None:
         """
