@@ -63,10 +63,13 @@ class TestFastAPI(unittest.TestCase):
         batch_size = 100
         for i in range(0, len(self.vectors), batch_size):
             print (i)
-            response = self.client.post(f"/db/{self.db_name}/add", json={
-                "vectors": self.vectors[i:i+batch_size],
-                "text": self.text[i:i+batch_size]
-            })
+            data = []
+            for j in range(i, i+batch_size):
+                data.append((
+                    self.vectors[j],
+                    {"text": self.text[j]}
+                ))
+            response = self.client.post(f"/db/{self.db_name}/add", json=data)
         self.assertTrue(response.status_code == 200)
 
     def test__003_train(self):

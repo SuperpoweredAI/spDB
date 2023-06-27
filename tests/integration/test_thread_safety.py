@@ -34,7 +34,8 @@ class TestThreadSafety(unittest.TestCase):
         self.extended_text = self.text * 10
 
         # add vectors and train index
-        self.db.add(self.vectors, self.text)
+        data = [(self.vectors[i], {"text": self.text[i]}) for i in range(len(self.vectors))]
+        self.db.add(data)
         self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq, num_clusters=20_000)
     
     @classmethod
@@ -68,7 +69,9 @@ class TestThreadSafety(unittest.TestCase):
         # Expected time for add() to complete.
         expected_add_time = 10
         # create and start add and query threads
-        add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
+        data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
+        add_thread = threading.Thread(target=self.db.add, args=(data))
+        #add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
         query_thread = threading.Thread(target=query_async)
         
         add_thread.start()
@@ -108,7 +111,9 @@ class TestThreadSafety(unittest.TestCase):
         # Expected time for add() to complete.
         expected_add_time = 10
         # create and start add and query threads
-        add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
+        data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
+        add_thread = threading.Thread(target=self.db.add, args=(data))
+        #add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
         query_thread = threading.Thread(target=remove_async)
         
         add_thread.start()

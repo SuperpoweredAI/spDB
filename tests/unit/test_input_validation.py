@@ -1,6 +1,10 @@
 import unittest
 import numpy as np
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
+
 from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
@@ -66,35 +70,43 @@ class TestAddInputParameters(unittest.TestCase):
 
     # Create a valid numpy array, an invalid one, and a text list
     num_vectors = 10
-    vector_array = np.random.rand(num_vectors, 768)
-    invalid_array = np.random.rand(num_vectors, 512)
+    vector_dimension = 768
+    vector_array = np.random.rand(1, vector_dimension)
+    invalid_array = np.random.rand(1, 512)
     # Normalize these vectors
-    vector_array = vector_array / np.linalg.norm(vector_array, axis=1)[:, None]
-    invalid_array = invalid_array / np.linalg.norm(invalid_array, axis=1)[:, None]
+    norm_vector_array = vector_array / np.linalg.norm(vector_array, axis=1)[:, None]
+    norm_invalid_array = invalid_array / np.linalg.norm(invalid_array, axis=1)[:, None]
     max_memory = 4 * 1024 * 1024 * 1024
-    text = ["test"] * num_vectors
+    metadata = [{"text": "test"}]
+
+    valid_data = [(norm_vector_array, metadata)] * num_vectors
+    valid_data_list = [(norm_vector_array.tolist(), metadata)] * num_vectors
+    invalid_data = [(norm_invalid_array, metadata)] * num_vectors
+    invalid_data_multiple_arrays = [(np.random.rand(2, vector_dimension), metadata)] * num_vectors
+    non_normalized_data = [(invalid_array, metadata)] * num_vectors
 
     valid_add_parameters = [
-        (vector_array, text, 768, num_vectors, max_memory, False),
-        (vector_array, text, None, num_vectors, max_memory, False),
+        (valid_data, vector_dimension, num_vectors, max_memory, False),
+        (valid_data, None, num_vectors, max_memory, False),
+        (valid_data_list, vector_dimension, num_vectors, max_memory, False),
+        (valid_data_list, None, num_vectors, max_memory, False),
     ]
 
     invalid_add_parameters = [
-        ([1, 2, 3], text, 768, num_vectors, max_memory, False, "Vectors are not the correct type. Expected type: numpy array. Actual type"),
-        (invalid_array, text, 768, num_vectors, max_memory, False, "Vector is not the correct size. Expected size"),
-        (vector_array, text[0:5], 768, num_vectors, max_memory, False, "Number of vectors does not match number of text items. Number of vectors"),
-        (vector_array, text, 768, num_vectors, 1, True, "Adding these vectors will exceed the max memory usage. Max memory usage"),
-        (np.random.rand(num_vectors, 768), text, None, num_vectors, max_memory, False, "Vector is not normalized"),
+        (invalid_data, vector_dimension, num_vectors, max_memory, False, "Vector is not the correct size. Expected size"),
+        (invalid_data_multiple_arrays, vector_dimension, num_vectors, max_memory, False, "Each vector should be a single array. Actual size"),
+        (non_normalized_data, None, num_vectors, max_memory, False, "Vector is not normalized"),
+        (valid_data, vector_dimension, num_vectors, 1, True, "Adding these vectors will exceed the max memory usage. Max memory usage"),
     ]
 
     def test__validate_add__valid_parameters(self):
-        for vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
-            is_valid, _ = input_validation.validate_add(vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index)
+        for data, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
+            _, _, is_valid, _ = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
             self.assertTrue(is_valid)
 
     def test__validate_add__invalid_parameters(self):
-        for vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index, expected_reason in self.invalid_add_parameters:
-            is_valid, reason = input_validation.validate_add(vectors, text, vector_dimension, num_vectors, max_memory, is_flat_index)
+        for data, vector_dimension, num_vectors, max_memory, is_flat_index, expected_reason in self.invalid_add_parameters:
+            _, _, is_valid, reason = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
 
@@ -121,3 +133,6 @@ class TestRemoveInputParameters(unittest.TestCase):
             is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
+
+if __name__ == '__main__':
+    unittest.main()
