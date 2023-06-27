@@ -332,8 +332,11 @@ class spDB:
                     # Show a warning message
                     logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
                 _, I = self.faiss_index.search(query_vector, final_top_k)
+                corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
+                    self.lmdb_uncompressed_vectors_path, I)
                 ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_metadata_path, I.tolist()[0])
-                return ranked_text, I[0]
+                cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
+                return ranked_text, I[0], cosine_similarity
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
@@ -343,10 +346,15 @@ class spDB:
         # brute force search full vectors to find true top_k
         _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
 
-        reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
-            self.lmdb_metadata_path, reranked_I, position_to_id_map)
+        # Get the final vectors. reranked_I is a list of indices in the corpus_vectors array
+        final_vectors = corpus_vectors[reranked_I[0]]
+        cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
 
-        return reranked_text, reranked_ids
+        reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
+            self.lmdb_metadata_path, reranked_I, position_to_id_map
+        )
+
+        return reranked_text, reranked_ids, cosine_similarity
     
     def remove(self, vector_ids: np.ndarray) -> None:
         """

@@ -65,11 +65,14 @@ class TestTrainInputParameters(unittest.TestCase):
 class TestAddInputParameters(unittest.TestCase):
 
     # Create a valid numpy array, an invalid one, and a text list
-    vector_array = np.random.rand(10, 768)
-    invalid_array = np.random.rand(10, 512)
-    text = ["test"] * 10
-    max_memory = 4 * 1024 * 1024 * 1024
     num_vectors = 10
+    vector_array = np.random.rand(num_vectors, 768)
+    invalid_array = np.random.rand(num_vectors, 512)
+    # Normalize these vectors
+    vector_array = vector_array / np.linalg.norm(vector_array, axis=1)[:, None]
+    invalid_array = invalid_array / np.linalg.norm(invalid_array, axis=1)[:, None]
+    max_memory = 4 * 1024 * 1024 * 1024
+    text = ["test"] * num_vectors
 
     valid_add_parameters = [
         (vector_array, text, 768, num_vectors, max_memory, False),
@@ -81,6 +84,7 @@ class TestAddInputParameters(unittest.TestCase):
         (invalid_array, text, 768, num_vectors, max_memory, False, "Vector is not the correct size. Expected size"),
         (vector_array, text[0:5], 768, num_vectors, max_memory, False, "Number of vectors does not match number of text items. Number of vectors"),
         (vector_array, text, 768, num_vectors, 1, True, "Adding these vectors will exceed the max memory usage. Max memory usage"),
+        (np.random.rand(num_vectors, 768), text, None, num_vectors, max_memory, False, "Vector is not normalized"),
     ]
 
     def test__validate_add__valid_parameters(self):
