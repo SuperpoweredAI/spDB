@@ -157,7 +157,7 @@ class spDB:
         if not is_valid:
             raise ValueError(reason)
         
-        logger.info(f'Adding {len(vectors)} vectors to the database')
+        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
         
         if is_flat_index:
             # Check the number of vectors in the index
