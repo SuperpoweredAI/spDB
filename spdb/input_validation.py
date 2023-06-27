@@ -2,6 +2,7 @@ import numpy as np
 import re
 from . import utils
 
+
 def validate_database_name(name: str) -> tuple[bool, str]:
     # Make sure the DB name is valid. It must be valid for a file name
     name_regex = r'^[a-zA-Z0-9_ -]+$'
@@ -64,6 +65,11 @@ def validate_add(vectors: np.ndarray, text: list, vector_dimension: int, num_vec
     if vectors.shape[0] != len(text):
         return False, "Number of vectors does not match number of text items. Number of vectors: " + str(vectors.shape[0]) + " Number of text items: " + str(len(text))
     
+    # Make sure the vectors are normalized (we're only checking the first vector)
+    for vector in vectors:
+        if not (0.999 < np.linalg.norm(vector) < 1.001):
+            return False, "Vector is not normalized"
+        
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
         new_memory_usage = utils.get_training_memory_usage(vectors.shape[1], num_vectors + vectors.shape[0])
