@@ -70,8 +70,7 @@ class TestThreadSafety(unittest.TestCase):
         expected_add_time = 10
         # create and start add and query threads
         data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
-        add_thread = threading.Thread(target=self.db.add, args=data)
-        #add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
+        add_thread = threading.Thread(target=self.db.add, kwargs={"data": data})
         query_thread = threading.Thread(target=query_async)
         
         add_thread.start()
@@ -112,8 +111,7 @@ class TestThreadSafety(unittest.TestCase):
         expected_add_time = 10
         # create and start add and query threads
         data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
-        add_thread = threading.Thread(target=self.db.add, args=data)
-        #add_thread = threading.Thread(target=self.db.add, args=(self.extended_vectors, self.extended_text))
+        add_thread = threading.Thread(target=self.db.add, kwargs={"data": data})
         query_thread = threading.Thread(target=remove_async)
         
         add_thread.start()
