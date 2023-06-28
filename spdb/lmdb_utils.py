@@ -56,23 +56,6 @@ def get_ranked_vectors(uncompressed_vectors_lmdb_path: str, I: np.ndarray) -> tu
     return corpus_vectors, position_to_id_map
 
 
-def get_reranked_metadata(text_lmdb_path: str, reranked_ids: np.ndarray) -> list:
-    # retrieve metadata for top_k results from LMDB
-
-    reranked_metadata = []
-    env = lmdb.open(text_lmdb_path)
-    with env.begin() as txn:
-        for id in reranked_ids:
-            value = txn.get(str(id).encode('utf-8'))
-            # Convert from bytes to string
-            value = value.decode('utf-8')
-            # Convert from json string to dict
-            value = json.loads(value)
-            reranked_metadata.append(value)
-    env.close()
-    return reranked_metadata
-
-
 def get_lmdb_index_ids(db_path: str) -> list:
     env = lmdb.open(db_path)
     # Get the ids from the LMDB
@@ -83,8 +66,8 @@ def get_lmdb_index_ids(db_path: str) -> list:
     return keys
 
 
-def get_lmdb_metadata_by_ids(text_lmdb_path: str, ids: list) -> list:
-    env = lmdb.open(text_lmdb_path)
+def get_lmdb_metadata_by_ids(metadata_lmdb_path: str, ids: list) -> list:
+    env = lmdb.open(metadata_lmdb_path)
     # Get the ids from the LMDB
     with env.begin() as txn:
         metadata = []

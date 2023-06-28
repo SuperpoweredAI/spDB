@@ -352,7 +352,7 @@ class spDB:
         # Get the ids of the reranked vectors
         reranked_ids = [position_to_id_map[position] for position in reranked_I[0]]
 
-        reranked_metadata = lmdb_utils.get_reranked_metadata(
+        reranked_metadata = lmdb_utils.get_lmdb_metadata_by_ids(
             self.lmdb_metadata_path, reranked_ids
         )
 
