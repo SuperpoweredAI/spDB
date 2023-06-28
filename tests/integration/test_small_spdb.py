@@ -14,7 +14,10 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
     all_cosine_similarity = []
     total_sum = 0
     for i in range(queries.shape[0]):
-        _, reranked_I, cosine_similarity = db.query(queries[i], query_k, gt_k)
+        results = db.query(queries[i], query_k, gt_k)
+        reranked_I = results["ids"]
+        cosine_similarity = results["cosine_similarity"]
+
         all_cosine_similarity.append(cosine_similarity)
         # compute recall
         total_sum += sum([1 for x in reranked_I[:gt_k] if x in ground_truths[i, :gt_k]]) / gt_k
@@ -38,8 +41,11 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
     def test__small_eval(self):
         vectors = self.vectors[0:2500]
         text = self.text[0:2500]
+        data = []
+        for i, vector in enumerate(vectors):
+            data.append((vector, {"text": text[i]}))
         # Add a subset of the vectors
-        self.db.add(vectors, text)
+        self.db.add(data)
         # Train the index
         self.db.train(False)
         # Make sure the vectors are in the index
@@ -47,8 +53,11 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
 
         vectors = self.vectors[2500:]
         text = self.text[2500:]
+        data = []
+        for i, vector in enumerate(vectors):
+            data.append((vector, {"text": text[i]}))
         # Add the rest of the vectors
-        self.db.add(vectors, text)
+        self.db.add(data)
 
         recall, all_unique_ids, all_cosine_similarity = evaluate(
             self.db, self.queries, self.ground_truths, self.query_k, self.gt_k

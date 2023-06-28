@@ -19,7 +19,10 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
     all_cosine_similarity = []
     total_sum = 0
     for i in range(queries.shape[0]):
-        _, reranked_I, cosine_similarity = db.query(queries[i], query_k, gt_k)
+        results = db.query(queries[i], query_k, gt_k)
+        reranked_I = results["ids"]
+        cosine_similarity = results["cosine_similarity"]
+
         all_cosine_similarity.append(cosine_similarity)
         # compute recall
         total_sum += sum([1 for x in reranked_I[:gt_k] if x in ground_truths[i, :gt_k]]) / gt_k
@@ -45,7 +48,8 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.gt_k = 50
         self.db = spDB(self.db_name)
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
-        self.db.add(self.vectors, self.text)
+        data = [(self.vectors[i], {"text": self.text[i]}) for i in range(len(self.vectors))]
+        self.db.add(data)
         self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
 
 

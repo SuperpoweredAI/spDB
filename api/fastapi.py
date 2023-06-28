@@ -1,9 +1,10 @@
 import os
 import sys
 import glob
+import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../'))
@@ -29,9 +30,8 @@ databases = {name: load_db(name) for name in db_names}
 
 
 # Define request and response models
-class VectorInput(BaseModel):
-   vectors: List[List[float]]
-   text: List[str]
+class AddInput(BaseModel):
+   add_data: List[Tuple]
 
 
 class QueryInput(BaseModel):
@@ -41,8 +41,9 @@ class QueryInput(BaseModel):
 
 
 class QueryOutput(BaseModel):
-   text: List[str]
+   metadata: List[dict]
    ids: List[int]
+   cosine_similarity: List[float]
 
 
 class CreateDBInput(BaseModel):
@@ -70,12 +71,11 @@ def create_db(create_db_input: CreateDBInput):
 
 
 @app.post("/db/{db_name}/add")
-def add_vectors(db_name: str, vector_input: VectorInput):
+def add_vectors(db_name: str, data: AddInput):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   print ("db", db.name)
-   db.add(vectors=vector_input.vectors, text=vector_input.text)
+   db.add(data=data.add_data)
    return {"message": "Vectors and text added successfully"}
 
 
@@ -108,10 +108,13 @@ def query(db_name: str, query_input: QueryInput):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   reranked_text, reranked_ids, cosine_similarity = db.query(
+   results = db.query(
       query_vector=query_input.query_vector, preliminary_top_k=query_input.preliminary_top_k, final_top_k=query_input.final_top_k
    )
-   return QueryOutput(text=reranked_text, ids=reranked_ids, cosine_similarity=cosine_similarity)
+   ids = results['ids']
+   metadata = results['metadata']
+   cosine_similarity = results['cosine_similarity']
+   return QueryOutput(metadata=metadata, ids=ids, cosine_similarity=cosine_similarity)
 
 
 @app.post("/db/{db_name}/save")

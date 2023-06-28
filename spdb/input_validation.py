@@ -51,19 +51,44 @@ def validate_train(vector_dimension: int, pca_dimension: int, opq_dimension: int
     return True, "Success"
 
 
-def validate_add(vectors: np.ndarray, text: list, vector_dimension: int, num_vectors: int, max_memory_usage: int, is_flat_index: bool) -> tuple[bool, str]:
+def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage: int, is_flat_index: bool) -> tuple[np.ndarray, list, bool, str]:
+
+    # Make sure the data is a list
+    if not isinstance(data, list):
+        return [], [], False, "Data is not the correct type. Expected type: list. Actual type: " + str(type(data))
+    
+    # Make sure each element in the data is a tuple
+    for item in data:
+        if not isinstance(item, tuple):
+            return [], [], False, "List item is not the correct type. Expected type: tuple. Actual type: " + str(type(item))
+    
+    vectors = [item[0] for item in data]
+    metadata = [item[1] for item in data]
+
+    # Double check that the vector is the right type
+    for i,vector in enumerate(vectors):
+        # Make sure the vector is a numpy array or list. If it's a list, convert it to a numpy array
+        if isinstance(vector, list):
+            vector = np.array(vector, dtype=np.float32)
+            vectors[i] = vector
+        if not isinstance(vector, np.ndarray):
+            return [], [], False, "Vector is not the correct type. Expected type: numpy array or list. Actual type: " + str(type(vector))
         
-    # Make sure the data is the correct type (probably a numpy array)
-    if not isinstance(vectors, np.ndarray):
-        return False, "Vectors are not the correct type. Expected type: numpy array. Actual type: " + str(type(vectors))
-
-    # Double check that the vector is the right size first
-    if vector_dimension != None and vectors.shape[1] != vector_dimension:
-        return False, "Vector is not the correct size. Expected size: " + str(vector_dimension) + " Actual size: " + str(vectors.shape[1])
-
-    # Check that the number of vectors is the same as the number of text items
-    if vectors.shape[0] != len(text):
-        return False, "Number of vectors does not match number of text items. Number of vectors: " + str(vectors.shape[0]) + " Number of text items: " + str(len(text))
+        # Make sure each vector is the right size
+        if len(vector.shape) != 1:
+            # If the vector is a 2D array, make sure it's a single row (so (1, 768) is ok, but (2, 768) is not)
+            if vector.shape[0] != 1 and vector.shape[1] != 1:
+                return [], [], False, "Each vector should be a single array. Actual size: " + str(vector.shape)
+            vector = np.squeeze(vector)
+            vectors[i] = vector
+        
+        if vector_dimension != None and vector.shape[0] != vector_dimension:
+            return [], [], False, "Vector is not the correct size. Expected size: " + str(vector_dimension) + " Actual size: " + str(vector.shape[0])
+    
+    # Make sure the vectors are normalized
+    for vector in vectors:
+        if not (0.999 < np.linalg.norm(vector) < 1.001):
+            return [], [], False, "Vector is not normalized"
     
     # Make sure the vectors are normalized (we're only checking the first vector)
     for vector in vectors:
@@ -72,11 +97,14 @@ def validate_add(vectors: np.ndarray, text: list, vector_dimension: int, num_vec
         
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
-        new_memory_usage = utils.get_training_memory_usage(vectors.shape[1], num_vectors + vectors.shape[0])
+        new_memory_usage = utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))
         if (max_memory_usage is not None and new_memory_usage > max_memory_usage):
-            return False, "Adding these vectors will exceed the max memory usage. Max memory usage: " + str(max_memory_usage) + " New memory usage: " + str(new_memory_usage)
+            return [], [], False, "Adding these vectors will exceed the max memory usage. Max memory usage: " + str(max_memory_usage) + " New memory usage: " + str(new_memory_usage)
+    
+    # Convert the vectors from a list to a numpy array
+    vectors = np.array(vectors, dtype=np.float32)
 
-    return True, "Success"
+    return vectors, metadata, True, "Success"
 
 
 def validate_remove(ids: np.ndarray) -> tuple[bool, str]:

@@ -75,8 +75,8 @@ class spDB:
         # create the lmdb databases
         self._lmdb_uncompressed_vectors_path = lmdb_utils.create_lmdb(self.lmdb_path, 'uncompressed_vectors')
         logger.info(f'lmdb uncompressed vectors database location: {self.lmdb_uncompressed_vectors_path}')
-        self._lmdb_text_path = lmdb_utils.create_lmdb(self.lmdb_path, 'text')
-        logger.info(f'lmdb text database location: {self.lmdb_text_path}')
+        self._lmdb_metadata_path = lmdb_utils.create_lmdb(self.lmdb_path, 'metadata')
+        logger.info(f'lmdb text database location: {self.lmdb_metadata_path}')
 
         self.save()
 
@@ -112,8 +112,8 @@ class spDB:
         return self._lmdb_uncompressed_vectors_path
 
     @property
-    def lmdb_text_path(self):
-        return self._lmdb_text_path
+    def lmdb_metadata_path(self):
+        return self._lmdb_metadata_path
     
     @property
     def num_vectors(self):
@@ -140,23 +140,20 @@ class spDB:
         
         return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)
 
-    def add(self, vectors: np.ndarray, text: list) -> list:
+    def add(self, data: list[tuple[np.ndarray, dict]]) -> list:
         """
         Add vectors and their corresponding text to the database.
 
-        :param vectors: A numpy array of vectors to be added.
-        :param text: A list of text corresponding to the vectors.
+        :param data: A list of tuples containing a vector and the associated metadata.
+        The metadata must be a dictionary
         """
 
-        # Check if the input data is a list, and if so, convert it to a numpy array
-        if isinstance(vectors, list):
-            vectors = np.array(vectors, dtype=np.float32)
-        
+        # Check if the index is flat or not
         is_flat_index = utils.check_is_flat_index(self.faiss_index)
 
         # Validate the inputs
-        is_valid, reason = input_validation.validate_add(
-            vectors, text, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
+        vectors, metadata, is_valid, reason = input_validation.validate_add(
+            data, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
         if not is_valid:
             raise ValueError(reason)
         
@@ -181,8 +178,8 @@ class spDB:
         logger.info(f'Added vectors to lmdb in {time.time() - t0} seconds')
         t0 = time.time()
         lmdb_utils.add_items_to_lmdb(
-            db_path=self.lmdb_text_path,
-            items=text,
+            db_path=self.lmdb_metadata_path,
+            items=metadata,
             ids=ids,
             encode_fn=str.encode
         )
@@ -331,9 +328,14 @@ class spDB:
                 _, I = self.faiss_index.search(query_vector, final_top_k)
                 corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
                     self.lmdb_uncompressed_vectors_path, I)
-                ranked_text = lmdb_utils.get_lmdb_text_by_ids(self.lmdb_text_path, I.tolist()[0])
+                metadata = lmdb_utils.get_lmdb_metadata_by_ids(self.lmdb_metadata_path, I.tolist()[0])
                 cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
-                return ranked_text, I[0], cosine_similarity
+                
+                return {
+                    "ids": I[0],
+                    'metadata': metadata,
+                    'cosine_similarity': cosine_similarity
+                }
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
@@ -347,11 +349,18 @@ class spDB:
         final_vectors = corpus_vectors[reranked_I[0]]
         cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
 
-        reranked_text, reranked_ids = lmdb_utils.get_reranked_text(
-            self.lmdb_text_path, reranked_I, position_to_id_map
+        # Get the ids of the reranked vectors
+        reranked_ids = [position_to_id_map[position] for position in reranked_I[0]]
+
+        reranked_metadata = lmdb_utils.get_lmdb_metadata_by_ids(
+            self.lmdb_metadata_path, reranked_ids
         )
 
-        return reranked_text, reranked_ids, cosine_similarity
+        return {
+            "ids": reranked_ids,
+            'metadata': reranked_metadata,
+            'cosine_similarity': cosine_similarity
+        }
     
     def remove(self, vector_ids: np.ndarray) -> None:
         """
@@ -387,7 +396,7 @@ class spDB:
 
         # remove text from LMDB
         lmdb_utils.remove_from_lmdb(
-            db_path=self.lmdb_text_path,
+            db_path=self.lmdb_metadata_path,
             ids=vector_ids
         )
         logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
