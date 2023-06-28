@@ -31,7 +31,7 @@ databases = {name: load_db(name) for name in db_names}
 
 # Define request and response models
 class AddInput(BaseModel):
-   data: List[Tuple[np.ndarray, dict]]
+   data: List[Tuple]
 
 
 class QueryInput(BaseModel):
