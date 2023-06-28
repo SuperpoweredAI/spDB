@@ -69,7 +69,7 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
     for i,vector in enumerate(vectors):
         # Make sure the vector is a numpy array or list. If it's a list, convert it to a numpy array
         if isinstance(vector, list):
-            vector = np.array(vector)
+            vector = np.array(vector, dtype=np.float32)
             vectors[i] = vector
         if not isinstance(vector, np.ndarray):
             return [], [], False, "Vector is not the correct type. Expected type: numpy array or list. Actual type: " + str(type(vector))
@@ -102,7 +102,7 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
             return [], [], False, "Adding these vectors will exceed the max memory usage. Max memory usage: " + str(max_memory_usage) + " New memory usage: " + str(new_memory_usage)
     
     # Convert the vectors from a list to a numpy array
-    vectors = np.array(vectors)
+    vectors = np.array(vectors, dtype=np.float32)
 
     return vectors, metadata, True, "Success"
 

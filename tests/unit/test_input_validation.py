@@ -1,6 +1,10 @@
 import unittest
 import numpy as np
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
+
 from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
@@ -97,7 +101,8 @@ class TestAddInputParameters(unittest.TestCase):
 
     def test__validate_add__valid_parameters(self):
         for data, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
-            _, _, is_valid, _ = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
+            vectors, _, is_valid, _ = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
+            self.assertTrue(type(vectors[0][0]) == np.float32)
             self.assertTrue(is_valid)
 
     def test__validate_add__invalid_parameters(self):
@@ -129,3 +134,6 @@ class TestRemoveInputParameters(unittest.TestCase):
             is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
+
+if __name__ == '__main__':
+    unittest.main()
