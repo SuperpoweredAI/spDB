@@ -90,6 +90,11 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
         if not (0.999 < np.linalg.norm(vector) < 1.001):
             return [], [], False, "Vector is not normalized"
     
+    # Make sure the vectors are normalized (we're only checking the first vector)
+    for vector in vectors:
+        if not (0.999 < np.linalg.norm(vector) < 1.001):
+            return False, "Vector is not normalized"
+        
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
         new_memory_usage = utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))
