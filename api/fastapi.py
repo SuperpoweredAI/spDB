@@ -75,8 +75,6 @@ def add_vectors(db_name: str, data: AddInput):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   print (type(data.add_data[0]))
-   print (type(data.add_data[0][0]))
    db.add(data=data.add_data)
    return {"message": "Vectors and text added successfully"}
 
