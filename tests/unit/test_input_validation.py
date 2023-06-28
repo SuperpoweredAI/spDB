@@ -1,10 +1,6 @@
 import unittest
 import numpy as np
 
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
-
 from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
@@ -72,10 +68,13 @@ class TestAddInputParameters(unittest.TestCase):
     num_vectors = 10
     vector_dimension = 768
     vector_array = np.random.rand(1, vector_dimension)
+    vector_array_inverted_dimensions = np.random.rand(vector_dimension, 1)
     invalid_array = np.random.rand(1, 512)
     # Normalize these vectors
     norm_vector_array = vector_array / np.linalg.norm(vector_array, axis=1)[:, None]
     norm_invalid_array = invalid_array / np.linalg.norm(invalid_array, axis=1)[:, None]
+    # Reshape a vector from (1, 768) to (768, 1)
+    norm_vector_array_inverted_dimensions = norm_vector_array.reshape(vector_dimension, 1)
     max_memory = 4 * 1024 * 1024 * 1024
     metadata = [{"text": "test"}]
 
@@ -90,6 +89,7 @@ class TestAddInputParameters(unittest.TestCase):
         (valid_data, None, num_vectors, max_memory, False),
         (valid_data_list, vector_dimension, num_vectors, max_memory, False),
         (valid_data_list, None, num_vectors, max_memory, False),
+        ([(norm_vector_array_inverted_dimensions, metadata)*num_vectors], vector_dimension, num_vectors, max_memory, False),
     ]
 
     invalid_add_parameters = [
@@ -101,9 +101,10 @@ class TestAddInputParameters(unittest.TestCase):
 
     def test__validate_add__valid_parameters(self):
         for data, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
-            vectors, _, is_valid, _ = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
-            self.assertTrue(type(vectors[0][0]) == np.float32)
+            vectors, _, is_valid, reason = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
+            print ("reason", reason)
             self.assertTrue(is_valid)
+            self.assertTrue(type(vectors[0][0]) == np.float32)
 
     def test__validate_add__invalid_parameters(self):
         for data, vector_dimension, num_vectors, max_memory, is_flat_index, expected_reason in self.invalid_add_parameters:
@@ -134,6 +135,3 @@ class TestRemoveInputParameters(unittest.TestCase):
             is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
-
-if __name__ == '__main__':
-    unittest.main()

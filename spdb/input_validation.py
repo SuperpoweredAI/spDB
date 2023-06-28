@@ -77,7 +77,7 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
         # Make sure each vector is the right size
         if len(vector.shape) != 1:
             # If the vector is a 2D array, make sure it's a single row (so (1, 768) is ok, but (2, 768) is not)
-            if vector.shape[0] != 1:
+            if vector.shape[0] != 1 and vector.shape[1] != 1:
                 return [], [], False, "Each vector should be a single array. Actual size: " + str(vector.shape)
             vector = np.squeeze(vector)
             vectors[i] = vector
