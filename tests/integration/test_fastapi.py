@@ -69,7 +69,7 @@ class TestFastAPI(unittest.TestCase):
                     self.vectors[j],
                     {"text": self.text[j]}
                 ))
-            response = self.client.post(f"/db/{self.db_name}/add", json=data)
+            response = self.client.post(f"/db/{self.db_name}/add", json={"add_data": data})
         self.assertTrue(response.status_code == 200)
 
     def test__003_train(self):

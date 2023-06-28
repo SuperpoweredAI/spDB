@@ -31,7 +31,7 @@ databases = {name: load_db(name) for name in db_names}
 
 # Define request and response models
 class AddInput(BaseModel):
-   data: List[Tuple]
+   add_data: List[Tuple]
 
 
 class QueryInput(BaseModel):
@@ -41,8 +41,9 @@ class QueryInput(BaseModel):
 
 
 class QueryOutput(BaseModel):
-   text: List[str]
+   metadata: List[dict]
    ids: List[int]
+   cosine_similarity: List[float]
 
 
 class CreateDBInput(BaseModel):
@@ -74,7 +75,9 @@ def add_vectors(db_name: str, data: AddInput):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   db.add(data=data)
+   print (type(data.add_data[0]))
+   print (type(data.add_data[0][0]))
+   db.add(data=data.add_data)
    return {"message": "Vectors and text added successfully"}
 
 
