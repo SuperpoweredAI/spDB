@@ -6,7 +6,7 @@ import unittest
 
 import helpers
 
-from spdb.spdb import spDB
+from spdb.spdb import spDB, load_db
 from spdb import lmdb_utils
 
 lmdb_utils.MAP_SIZE = 10 * 1024 * 1024 * 1024  # set testing map size to 10 GB
@@ -46,11 +46,10 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.omit_opq = True # This speeds up the test with a very small performance hit
         self.query_k = 500
         self.gt_k = 50
-        self.db = spDB(self.db_name)
+        db = spDB(self.db_name)
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
         data = [(self.vectors[i], {"text": self.text[i]}) for i in range(len(self.vectors))]
-        self.db.add(data)
-        self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
+        db.add(data)
 
 
     def tearDown(self):
@@ -58,7 +57,13 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
 
     def test__full_eval(self):
+
+        # Load the index ()
+        db = load_db(self.db_name)
+        self.db = db
+
         # Train the index
+        db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
 
         # Evaluate the index
         recall, latency, all_unique_ids, all_cosine_similarity = evaluate(
@@ -81,5 +86,35 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
-        # Retrain the index, but without two level clustering
+
+    def test__full_eval__no_two_level(self):
+
+        # Load the index ()
+        db = load_db(self.db_name)
+        self.db = db
+
+        # Train the index, but without two level clustering
         self.db.train(False)
+
+        # Evaluate the index
+        recall, latency, all_unique_ids, all_cosine_similarity = evaluate(
+            self.db, self.queries, self.ground_truths, self.query_k, self.gt_k
+        )
+
+        print ("recall", recall)
+
+        # Make sure cosine similarity is between 0 and 1
+        # all_cosine_similarity is a list of lists
+        all_cosine_similarity = [item for sublist in all_cosine_similarity for item in sublist]
+        self.assertTrue(all([x >= 0 and x <= 1 for x in all_cosine_similarity]))
+
+        # Set the recall cutoff at 0.97 and less than 1
+        # If recall is above 1, something went wrong
+        self.assertGreater(recall, 0.97)
+        self.assertLessEqual(recall, 1)
+
+        # Make sure latency is less than 30ms (this includes the re-ranking from disk step)
+        self.assertLess(latency, 30)
+
+        # Make sure the length of each unique ID list is equal to the gt_k
+        self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
