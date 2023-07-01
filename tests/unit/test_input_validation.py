@@ -1,6 +1,10 @@
 import unittest
 import numpy as np
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
+
 from spdb import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
@@ -90,19 +94,18 @@ class TestAddInputParameters(unittest.TestCase):
         (valid_data_list, vector_dimension, num_vectors, max_memory, False),
         (valid_data_list, None, num_vectors, max_memory, False),
         ([(norm_vector_array_inverted_dimensions, metadata)*num_vectors], vector_dimension, num_vectors, max_memory, False),
+        (non_normalized_data, None, num_vectors, max_memory, False),
     ]
 
     invalid_add_parameters = [
         (invalid_data, vector_dimension, num_vectors, max_memory, False, "Vector is not the correct size. Expected size"),
         (invalid_data_multiple_arrays, vector_dimension, num_vectors, max_memory, False, "Each vector should be a single array. Actual size"),
-        (non_normalized_data, None, num_vectors, max_memory, False, "Vector is not normalized"),
         (valid_data, vector_dimension, num_vectors, 1, True, "Adding these vectors will exceed the max memory usage. Max memory usage"),
     ]
 
     def test__validate_add__valid_parameters(self):
         for data, vector_dimension, num_vectors, max_memory, is_flat_index in self.valid_add_parameters:
             vectors, _, is_valid, reason = input_validation.validate_add(data, vector_dimension, num_vectors, max_memory, is_flat_index)
-            print ("reason", reason)
             self.assertTrue(is_valid)
             self.assertTrue(type(vectors[0][0]) == np.float32)
 
@@ -135,3 +138,6 @@ class TestRemoveInputParameters(unittest.TestCase):
             is_valid, reason = input_validation.validate_remove(ids)
             self.assertFalse(is_valid)
             self.assertTrue(expected_reason in reason)
+
+if __name__ == '__main__':
+    unittest.main()

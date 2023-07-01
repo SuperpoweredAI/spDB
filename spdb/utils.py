@@ -1,4 +1,6 @@
 import numpy as np
+import os
+
 
 def get_num_clusters(num_vectors: int) -> int:
     # Get the number of clusters to use for the IVF index, based on the number of vectors

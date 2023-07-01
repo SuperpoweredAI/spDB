@@ -1,6 +1,7 @@
 import faiss
 import logging
 import numpy as np
+import json
 import os
 import pickle
 import shutil
@@ -42,7 +43,7 @@ class spDB:
     """
     A class representing a searchable database using Faiss and LMDB for efficient storage and retrieval of text and vectors.
     """
-    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024, logging_level: int = logging.INFO):
+    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024, logging_level: int = logging.INFO, create_or_load: str ='create'):
         """
         Initialize the spDB object.
 
@@ -51,16 +52,22 @@ class spDB:
         :param vector_dimension: The dimension of the vectors to be stored in the database. 
         :param max_memory_usage: The maximum memory usage allowed for the construction and querying of the database, in bytes. Defaults to 4 GB.
         """
-        logger.info('Initializing spDB')
         self.name = name
-        self.faiss_index = None
         self._faiss_lock = threading.Lock()
+        self._save_path = get_spdb_path(name, save_path)
+
+        if create_or_load == 'create':
+            self.initialize_new_db(name, vector_dimension, max_memory_usage)
+        else:
+            self.initialize_from_config()
+
+    def initialize_new_db(self, name: str, vector_dimension: int, max_memory_usage: int) -> None:
+
+        logger.info('Initializing spDB')
         self._vector_dimension = vector_dimension
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
-
-        # Set the save path to the current directory if it is not specified
-        self._save_path = get_spdb_path(name, save_path)
+        self.faiss_index = None
 
         # Create the save directory if it doesn't exist and return an exception if it already does exist
         if os.path.exists(self.save_path):
@@ -79,6 +86,24 @@ class spDB:
         logger.info(f'lmdb text database location: {self.lmdb_metadata_path}')
 
         self.save()
+
+    def initialize_from_config(self) -> None:
+        
+        config_params = self.read_config_params()
+        self._vector_dimension = config_params["vector_dimension"]
+        self.max_id = config_params["max_id"]
+        self.max_memory_usage = config_params["max_memory_usage"]
+
+        # set the lmdb path
+        self._lmdb_path = os.path.join(self.save_path, 'lmdb')
+        self._lmdb_uncompressed_vectors_path = os.path.join(self.lmdb_path, 'uncompressed_vectors')
+        self._lmdb_metadata_path = os.path.join(self.lmdb_path, 'metadata')
+
+        # load faiss index from save path
+        try:
+            self.faiss_index = faiss.read_index(os.path.join(self.save_path, 'faiss_index.index'))
+        except:
+            self.faiss_index = None
 
     def __getstate__(self):
         """
@@ -401,31 +426,36 @@ class spDB:
         )
         logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
 
-
     def save(self) -> None:
         """
         Save the spDB object and its associated Faiss index to disk.
         """
         with self._faiss_lock:
-            # Save the faiss index to a tmp variable, then set it to None so it doesn't get pickled
-            tmp = self.faiss_index
             if self.faiss_index is not None:
                 faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
                 logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
-                self.faiss_index = None
                 logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
-            # save object to pickle file
-            spdb_object_pickle_path = os.path.join(self.save_path, 'spdb_object.pickle')
-            logger.info(f'Saving spDB object to disk at {spdb_object_pickle_path}')
-            with open(spdb_object_pickle_path, 'wb') as f:
-                pickle.dump(self, f)
-            logger.info(f'spDB object saved to disk at {spdb_object_pickle_path}')
+            self.save_config_params()
 
-            # Reset the faiss index
-            self.faiss_index = tmp
+    def read_config_params(self):
+        config_file_path = os.path.join(self.save_path, 'config.json')
+        # Read in the json
+        with open(config_file_path, 'r') as f:
+            config_params = json.load(f)
+        return config_params
+
+    def save_config_params(self):
+        config_params = {
+            "max_id": self.max_id,
+            "vector_dimension": self.vector_dimension,
+            "max_memory_usage": self.max_memory_usage
+        }
+        config_file_path = os.path.join(self.save_path, 'config.json')
+        with open(config_file_path, 'w') as f:
+            json.dump(config_params, f)
 
     def delete(self):
         """Remove the spdb object and its associated files from disk."""
@@ -446,19 +476,8 @@ def load_db(name: str, save_path: str = None) -> spDB:
 
     # make sure the database exists
     if not os.path.exists(save_path):
-    #if not os.path.exists(os.path.join(save_path, f'{name}.pickle')):
         raise ValueError(f'No database named {name} exists in {save_path}')
 
-    # load spDB object from pickle file
-    with open(os.path.join(save_path, f'spdb_object.pickle'), 'rb') as f:
-        db = pickle.load(f)
-
-    # load faiss index from save path
-    try:
-        index = faiss.read_index(os.path.join(db.save_path, f'faiss_index.index'))
-        #index = faiss.read_index(os.path.join(db.save_path, f'{name}.index'))
-    except:
-        index = None
-    db.faiss_index = index
+    db = spDB(name=name, save_path=save_path, create_or_load="load")
 
     return db
