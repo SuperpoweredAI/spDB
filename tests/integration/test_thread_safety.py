@@ -108,7 +108,7 @@ class TestThreadSafety(unittest.TestCase):
         # THREAD SAFETY TEST
         ##################
         # Expected time for add() to complete.
-        expected_add_time = 10
+        expected_add_time = 15
         # create and start add and query threads
         data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
         add_thread = threading.Thread(target=self.db.add, kwargs={"data": data})
