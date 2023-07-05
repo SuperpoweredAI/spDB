@@ -1,7 +1,5 @@
 import os
 import sys
-import glob
-import numpy as np
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
@@ -9,7 +7,6 @@ from typing import List, Optional, Tuple
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../'))
 
-#from spdb import spDB, load_db
 from spdb.spdb import spDB, load_db
 
 # Install FastAPI and Uvicorn
