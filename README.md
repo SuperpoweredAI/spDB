@@ -26,9 +26,12 @@ You can add metadata to each vector by including a metadata dictionary. You can 
 Metadata filtering is the next major feature that will be added. This will allow you to use SQL-like statements to control which items get searched over.
 
 ## FastAPI server deployment
-To deploy your database as a server with a REST API, you can just run fastapi.py as a script. This will start a FastAPI server instance. You can then make API calls to it.
+To deploy your database as a server with a REST API, you can make use of the `fastapi.py` file. To start the server, open up a terminal and run the following command:
+`uvicorn api.fastapi:app --host 0.0.0.0 --port 8000`
+Please note, you must be in the main spDB directory to run this command (ie. at the level of the `api` folder)
 
 For more detail, you can check out our FastAPI tutorial [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/fastapi_example.ipynb)
+You can also learn more about FastAPI [here](https://fastapi.tiangolo.com)
 
 ## Limitations
 - spDB uses a simple embedded database architecture, not a client-server architecture, so it may not be ideal for certain kinds of large-scale production applications.
