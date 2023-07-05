@@ -10,7 +10,9 @@ spDB uses a two-step process to perform approximate nearest neighbors search. Fi
 
 ## Basic usage guide
 
-For a quickstart guide, check out our getting started example [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/getting_started.ipynb)
+Run `pip install -r requirements.txt` to install all of the necessary packages.
+
+For a quickstart guide, check out our getting started example [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/getting_started.ipynb).
 
 By default, all spDB databases are saved to the ~/.spdb directory. This directory is created automatically if it doesn’t exist when you initialize an spDB object. You can override this path by specifying a save_path when you create your spDB object.
 
@@ -34,7 +36,6 @@ For more detail, you can check out our FastAPI tutorial [here](https://github.co
 You can also learn more about FastAPI [here](https://fastapi.tiangolo.com).
 
 ## Limitations
-- spDB uses a simple embedded database architecture, not a client-server architecture, so it may not be ideal for certain kinds of large-scale production applications.
 - One of the main dependencies, Faiss, doesn't play nice with Apple M1/M2 chips. You may be able to get it to work by building it from source, but we haven't successfully done so yet.
 - We haven't tested it on datasets larger than 35M vectors yet. It should still work well up to 100-200M vectors, but beyond that performance may start to deteriorate.
 
@@ -43,3 +44,7 @@ You can also learn more about FastAPI [here](https://fastapi.tiangolo.com).
 - [Contributing](https://github.com/SuperpoweredAI/spDB/wiki/Contributing)
 - [Development roadmap](https://github.com/SuperpoweredAI/spDB/wiki/Development-roadmap)
 - [Examples](https://github.com/SuperpoweredAI/spDB/tree/main/examples)
+
+
+## Join the spDB community
+Join our Discord [here]()
