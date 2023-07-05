@@ -65,6 +65,14 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
     vectors = [item[0] for item in data]
     metadata = [item[1] for item in data]
 
+    if len(vectors) < 1:
+        return [], [], False, "There are no vectors in the data"
+
+    # Make sure the vector dimension is greater than 0
+    if vector_dimension == None:
+        if len(vectors[0]) == 0:
+            return [], [], False, "Vector dimension cannot be 0"
+
     # Double check that the vector is the right type
     for i,vector in enumerate(vectors):
         # Make sure the vector is a numpy array or list. If it's a list, convert it to a numpy array
