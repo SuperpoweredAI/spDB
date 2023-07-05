@@ -28,7 +28,7 @@ Metadata filtering is the next major feature that will be added. This will allow
 ## FastAPI server deployment
 To deploy your database as a server with a REST API, you can make use of the `fastapi.py` file. To start the server, open up a terminal and run the following command:
 `uvicorn api.fastapi:app --host 0.0.0.0 --port 8000`
-Please note, you must be in the main spDB directory to run this command (ie. at the level of the `api` folder)
+Please note, you must be in the main spDB directory to run this command.
 
 For more detail, you can check out our FastAPI tutorial [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/fastapi_example.ipynb)
 You can also learn more about FastAPI [here](https://fastapi.tiangolo.com)
