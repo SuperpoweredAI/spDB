@@ -57,9 +57,9 @@ class spDB:
         self._save_path = get_spdb_path(name, save_path)
 
         if create_or_load == 'create':
-            self.initialize_new_db(name, vector_dimension, max_memory_usage)
+            self._initialize_new_db(name, vector_dimension, max_memory_usage)
         else:
-            self.initialize_from_config()
+            self._initialize_from_config()
 
     def _initialize_new_db(self, name: str, vector_dimension: int, max_memory_usage: int) -> None:
 
