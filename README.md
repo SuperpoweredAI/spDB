@@ -10,7 +10,7 @@ spDB uses a two-step process to perform approximate nearest neighbors search. Fi
 
 ## Basic usage guide
 
-Run `pip install -r requirements.txt` to install all of the necessary packages.
+Clone the repo and run `pip install -r requirements.txt` to install all of the necessary packages.
 
 For a quickstart guide, check out our getting started example [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/getting_started.ipynb).
 
