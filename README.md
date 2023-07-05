@@ -9,19 +9,8 @@ With spDB, you can index and query 100M 768d vectors with peak memory usage of a
 spDB uses a two-step process to perform approximate nearest neighbors search. First, a highly compressed Faiss index is searched to find the `preliminary_top_k` (set to 500 by default) results. Then the full uncompressed vectors for these results are retrieved from a key-value store on disk, and a k-nearest neighbors search is performed on these vectors to arrive at the `final_top_k` results.
 
 ## Basic usage guide
-Install using pip: `pip install spdb`
 
-```python
-from spdb import spDB
-
-db = spDB(name="Example")
-db.add(data)
-db.train(use_two_level_clustering=False)
-
-results = db.query(query_vector)
-```
-
-For a more detailed guide, check out our getting started example [here](https://github.com/NickGator1/spDB/blob/main/examples/getting_started.ipynb)
+For a quickstart guide, check out our getting started example [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/getting_started.ipynb)
 
 By default, all spDB databases are saved to the ~/.spdb directory. This directory is created automatically if it doesn’t exist when you initialize an spDB object. You can override this path by specifying a save_path when you create your spDB object.
 
@@ -37,18 +26,9 @@ You can add metadata to each vector by including a metadata dictionary. You can 
 Metadata filtering is the next major feature that will be added. This will allow you to use SQL-like statements to control which items get searched over.
 
 ## FastAPI server deployment
-To deploy your database as a server with a REST API, you can just run fastapi.py as a script. This will start a FastAPI server instance. You can then make API calls to it using the following endpoints:
+To deploy your database as a server with a REST API, you can just run fastapi.py as a script. This will start a FastAPI server instance. You can then make API calls to it.
 
-`/db/create`
-
-`/db/{db_name}/add`
-
-`/db/{db_name}/train`
-
-`/db/{db_name}/query`
-
-You can check out our FastAPI tutorial [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/fastapi_example.ipynb)
-…
+For more detail, you can check out our FastAPI tutorial [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/fastapi_example.ipynb)
 
 ## Limitations
 - spDB uses a simple embedded database architecture, not a client-server architecture, so it may not be ideal for certain kinds of large-scale production applications.
