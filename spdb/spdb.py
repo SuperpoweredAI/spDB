@@ -1,6 +1,7 @@
 import faiss
 import logging
 import numpy as np
+import json
 import os
 import pickle
 import shutil
@@ -88,7 +89,7 @@ class spDB:
 
     def initialize_from_config(self) -> None:
         
-        config_params = utils.read_config_params(self.save_path)
+        config_params = self.read_config_params()
         self._vector_dimension = config_params["vector_dimension"]
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]
@@ -425,7 +426,6 @@ class spDB:
         )
         logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
 
-
     def save(self) -> None:
         """
         Save the spDB object and its associated Faiss index to disk.
@@ -438,7 +438,24 @@ class spDB:
                 faiss.write_index(self.faiss_index, faiss_index_path)
                 logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
-            utils.save_config_params(self.save_path, self.max_id, self.vector_dimension, self.max_memory_usage)
+            self.save_config_params()
+
+    def read_config_params(self):
+        config_file_path = os.path.join(self.save_path, 'config.json')
+        # Read in the json
+        with open(config_file_path, 'r') as f:
+            config_params = json.load(f)
+        return config_params
+
+    def save_config_params(self):
+        config_params = {
+            "max_id": self.max_id,
+            "vector_dimension": self.vector_dimension,
+            "max_memory_usage": self.max_memory_usage
+        }
+        config_file_path = os.path.join(self.save_path, 'config.json')
+        with open(config_file_path, 'w') as f:
+            json.dump(config_params, f)
 
     def delete(self):
         """Remove the spdb object and its associated files from disk."""

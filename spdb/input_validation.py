@@ -85,11 +85,11 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
         if vector_dimension != None and vector.shape[0] != vector_dimension:
             return [], [], False, "Vector is not the correct size. Expected size: " + str(vector_dimension) + " Actual size: " + str(vector.shape[0])
     
-    # Make sure the vectors are normalized
-    for vector in vectors:
-        if not (0.999 < np.linalg.norm(vector) < 1.001):
-            return [], [], False, "Vector is not normalized"
-        
+    # Normalize all of the vectors (no need to check first, since we are just dividing by 1 if the vector is already normalized)
+    for i,vector in enumerate(vectors):
+        vector = vector / np.linalg.norm(vector)
+        vectors[i] = vector
+            
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
         new_memory_usage = utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))
