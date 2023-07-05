@@ -15,19 +15,21 @@ Install using pip: `pip install spdb`
 from spdb import spDB
 
 db = spDB(name="Example")
-db.add(vectors, text)
-db.train()
+db.add(data)
+db.train(use_two_level_clustering=False)
 
 results = db.query(query_vector)
 ```
 
+For a more detailed guide, check out our getting started example [here](https://github.com/NickGator1/spDB/blob/main/examples/getting_started.ipynb)
+
 By default, all spDB databases are saved to the ~/.spdb directory. This directory is created automatically if it doesn’t exist when you initialize an spDB object. You can override this path by specifying a save_path when you create your spDB object.
 
 ## Adding and removing items
-To add vectors to your database, use the db.add() method. This method takes a list of (vector, metadata) tuples, where each vector is itself a list, and each metadata item is a dictionary with keys of your choosing.
+To add vectors to your database, use the `db.add()` method. This method takes a list of `(vector, metadata)` tuples, where each vector is itself a list, and each metadata item is a dictionary with keys of your choosing.
 
 ## How and when to train the index
-In order to query your spDB database, you’ll need to train the search index. You can do this by running the db.train() method. The index training process exploits patterns in your vectors to enable more efficient search. In general, you want to add your vectors and then train the index. For more details on exactly when to train and potentially retrain your index, check out our wiki page [here](https://github.com/SuperpoweredAI/spDB/wiki/Search-index-training).
+In order to query your spDB database, you’ll need to train the search index. You can do this by running the `db.train()` method. The index training process exploits patterns in your vectors to enable more efficient search. In general, you want to add your vectors and then train the index. For more details on exactly when to train and potentially retrain your index, check out our wiki page [here](https://github.com/SuperpoweredAI/spDB/wiki/Search-index-training).
 
 ## Metadata
 You can add metadata to each vector by including a metadata dictionary. You can include whatever metadata fields you want, but the keys and values should all be serializable.
@@ -36,7 +38,16 @@ Metadata filtering is the next major feature that will be added. This will allow
 
 ## FastAPI server deployment
 To deploy your database as a server with a REST API, you can just run fastapi.py as a script. This will start a FastAPI server instance. You can then make API calls to it using the following endpoints:
-/db/create
+
+`/db/create`
+
+`/db/{db_name}/add`
+
+`/db/{db_name}/train`
+
+`/db/{db_name}/query`
+
+You can check out our FastAPI tutorial [here](https://github.com/SuperpoweredAI/spDB/blob/main/examples/fastapi_example.ipynb)
 …
 
 ## Limitations
@@ -48,3 +59,4 @@ To deploy your database as a server with a REST API, you can just run fastapi.py
 - [Tunable parameters](https://github.com/SuperpoweredAI/spDB/wiki/Tunable-parameters)
 - [Contributing](https://github.com/SuperpoweredAI/spDB/wiki/Contributing)
 - [Development roadmap](https://github.com/SuperpoweredAI/spDB/wiki/Development-roadmap)
+- [Examples](https://github.com/SuperpoweredAI/spDB/tree/main/examples)
