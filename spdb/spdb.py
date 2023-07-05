@@ -57,11 +57,11 @@ class spDB:
         self._save_path = get_spdb_path(name, save_path)
 
         if create_or_load == 'create':
-            self.initialize_new_db(name, vector_dimension, max_memory_usage)
+            self._initialize_new_db(name, vector_dimension, max_memory_usage)
         else:
-            self.initialize_from_config()
+            self._initialize_from_config()
 
-    def initialize_new_db(self, name: str, vector_dimension: int, max_memory_usage: int) -> None:
+    def _initialize_new_db(self, name: str, vector_dimension: int, max_memory_usage: int) -> None:
 
         logger.info('Initializing spDB')
         self._vector_dimension = vector_dimension
@@ -87,7 +87,7 @@ class spDB:
 
         self.save()
 
-    def initialize_from_config(self) -> None:
+    def _initialize_from_config(self) -> None:
         
         config_params = self.read_config_params()
         self._vector_dimension = config_params["vector_dimension"]
@@ -105,27 +105,18 @@ class spDB:
         except:
             self.faiss_index = None
 
-    def __getstate__(self):
-        """
-        Get the state of the spDB object for pickling. We need to remove the _faiss_lock attribute because it is not picklable.
-        """
-        state = self.__dict__.copy()
-        del state['_faiss_lock']
-        return state
-
-    def __setstate__(self, state):
-        """
-        Set the state of the spDB object for unpickling. We need to add the _faiss_lock attribute because it is not picklable.
-        """
-        self.__dict__.update(state)
-        self._faiss_lock = threading.Lock()
-
     @property
     def vector_dimension(self):
+        """
+        The dimension of vectors in the database.
+        """
         return self._vector_dimension
 
     @property
     def save_path(self):
+        """
+        The path where the associated database files will be saved on disk.
+        """
         return self._save_path
 
     @property
@@ -170,7 +161,8 @@ class spDB:
         Add vectors and their corresponding text to the database.
 
         :param data: A list of tuples containing a vector and the associated metadata.
-        The metadata must be a dictionary
+        
+        NOTE: The metadata must be a dictionary
         """
 
         # Check if the index is flat or not
@@ -208,7 +200,7 @@ class spDB:
             ids=ids,
             encode_fn=str.encode
         )
-        logger.info(f'Added text to lmdb in {time.time() - t0} seconds')
+        logger.info(f'Added metadata to lmdb in {time.time() - t0} seconds')
 
         # If the index is not trained, don't add the vectors to the index
         t0 = time.time()
@@ -233,6 +225,7 @@ class spDB:
         :param opq_dimension: The target dimension for OPQ dimensionality reduction. If None, a default value will be used.
         :param compressed_vector_bytes: The number of bytes to use for compressed vectors. If None, a default value will be used.
         :param omit_opq: Whether to omit the OPQ step during training. This reduces training time with a slight drop in accuracy. Defaults to False.
+        :param num_clusters: The number of clusters to use for training. If None, a default value will be calculated.
         """
 
         logger.info('Training the Faiss index')
@@ -251,7 +244,6 @@ class spDB:
         logger.info(f'opq_dimension: {opq_dimension}')
         logger.info(f'compressed_vector_bytes: {compressed_vector_bytes}')
         logger.info(f'omit_opq: {omit_opq}')
-
 
         # Validate the inputs
         is_valid, reason = input_validation.validate_train(
