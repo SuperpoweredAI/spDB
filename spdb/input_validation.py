@@ -65,6 +65,14 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
     vectors = [item[0] for item in data]
     metadata = [item[1] for item in data]
 
+    if len(vectors) < 1:
+        return [], [], False, "There are no vectors in the data"
+
+    # Make sure the vector dimension is greater than 0
+    if vector_dimension == None:
+        if len(vectors[0]) == 0:
+            return [], [], False, "Vector dimension cannot be 0"
+
     # Double check that the vector is the right type
     for i,vector in enumerate(vectors):
         # Make sure the vector is a numpy array or list. If it's a list, convert it to a numpy array
@@ -85,11 +93,11 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
         if vector_dimension != None and vector.shape[0] != vector_dimension:
             return [], [], False, "Vector is not the correct size. Expected size: " + str(vector_dimension) + " Actual size: " + str(vector.shape[0])
     
-    # Make sure the vectors are normalized
-    for vector in vectors:
-        if not (0.999 < np.linalg.norm(vector) < 1.001):
-            return [], [], False, "Vector is not normalized"
-        
+    # Normalize all of the vectors (no need to check first, since we are just dividing by 1 if the vector is already normalized)
+    for i,vector in enumerate(vectors):
+        vector = vector / np.linalg.norm(vector)
+        vectors[i] = vector
+            
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
         new_memory_usage = utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))

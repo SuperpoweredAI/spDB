@@ -1,23 +1,5 @@
 import numpy as np
 import os
-import json
-
-def read_config_params(save_path):
-    config_file_path = os.path.join(save_path, 'config.json')
-    # Read in the json
-    with open(config_file_path, 'r') as f:
-        config_params = json.load(f)
-    return config_params
-
-def save_config_params(save_path, max_id, vector_dimension, max_memory_usage):
-    config_params = {
-        "max_id": max_id,
-        "vector_dimension": vector_dimension,
-        "max_memory_usage": max_memory_usage
-    }
-    config_file_path = os.path.join(save_path, 'config.json')
-    with open(config_file_path, 'w') as f:
-         json.dump(config_params, f)
 
 def get_num_clusters(num_vectors: int) -> int:
     # Get the number of clusters to use for the IVF index, based on the number of vectors
