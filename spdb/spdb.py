@@ -200,7 +200,7 @@ class spDB:
             ids=ids,
             encode_fn=str.encode
         )
-        logger.info(f'Added text to lmdb in {time.time() - t0} seconds')
+        logger.info(f'Added metadata to lmdb in {time.time() - t0} seconds')
 
         # If the index is not trained, don't add the vectors to the index
         t0 = time.time()
