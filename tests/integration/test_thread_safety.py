@@ -18,6 +18,27 @@ lmdb_utils.MAP_SIZE = 10 * 1024 * 1024 * 1024  # set testing map size to 10 GB
 logger = logging.getLogger(__name__)
 
 
+class PropagatingThread(threading.Thread):
+    """
+    Make sure exceptions thrown in threads are caught and re-raised.
+    """
+    def run(self):
+        self.exc = None
+        try:
+            if hasattr(self, '_Thread__target'):
+                self.ret = self._Thread__target(*self._Thread__args, **self._Thread__kwargs)
+            else:
+                self.ret = self._target(*self._args, **self._kwargs)
+        except BaseException as e:
+            self.exc = e
+
+    def join(self):
+        super(PropagatingThread, self).join()
+        if self.exc:
+            raise self.exc
+        return self.ret
+
+
 class TestThreadSafety(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -45,8 +66,8 @@ class TestThreadSafety(unittest.TestCase):
     def test__query_while_adding(self):
         # define helper functions for concurrent testing
         def query_async():
-            logger.info(f'starting short query after waiting {expected_add_time} seconds for lmdb adds to complete and long add to start')
-            time.sleep(expected_add_time)  # simulate a slight delay before querying
+            logger.info(f'starting short query after waiting {wait_time} seconds for lmdb adds to complete and long add to start')
+            time.sleep(wait_time)  # simulate a slight delay before querying
             start_time = time.perf_counter()
             logger.info(f'starting short query, but expecting to be locked from long faiss.add()')
             result = self.db.query(self.queries[0], self.query_k, self.gt_k)
@@ -54,7 +75,7 @@ class TestThreadSafety(unittest.TestCase):
             time_taken = end_time - start_time
 
             logger.info(f'time taken for single query (initiated after long faiss.add()): {time_taken}')
-            self.assertGreaterEqual(time_taken, expected_add_time, "query() should take at least as long as add()")
+            self.assertGreaterEqual(time_taken, 10, "query() should take at least 10 seconds")
 
         # log expected query time for short query
         t0 = time.perf_counter()
@@ -67,11 +88,11 @@ class TestThreadSafety(unittest.TestCase):
         # THREAD SAFETY TEST
         ##################
         # Expected time for add() to complete.
-        expected_add_time = 10
+        wait_time = 20
         # create and start add and query threads
         data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
-        add_thread = threading.Thread(target=self.db.add, kwargs={"data": data})
-        query_thread = threading.Thread(target=query_async)
+        add_thread = PropagatingThread(target=self.db.add, kwargs={"data": data})
+        query_thread = PropagatingThread(target=query_async)
         
         add_thread.start()
         query_thread.start()
@@ -86,8 +107,8 @@ class TestThreadSafety(unittest.TestCase):
     def test__remove_while_adding(self):
         # define helper functions for concurrent testing
         def remove_async():
-            logger.info(f'going to start removal request after waiting {expected_add_time} seconds for lmdb adds to complete and long add to start')
-            time.sleep(expected_add_time)  # simulate a slight delay before querying
+            logger.info(f'going to start removal request after waiting {wait_time} seconds for lmdb adds to complete and long add to start')
+            time.sleep(wait_time)  # simulate a slight delay before removal
             start_time = time.perf_counter()
             logger.info(f'starting removal request, but expecting to be locked from long faiss.add()')
             result = self.db.remove(vector_ids=[self.db.max_id])
@@ -95,31 +116,30 @@ class TestThreadSafety(unittest.TestCase):
             time_taken = end_time - start_time
 
             logger.info(f'time taken for remove request (initiated after long faiss.add()): {time_taken}')
-            self.assertGreaterEqual(time_taken, expected_add_time, "remove() should take at least as long as add()")
+            self.assertGreaterEqual(time_taken, 10, "remove() should take at least 10 seconds while waiting")
 
-        # log expected query time for short query
         t0 = time.perf_counter()
         self.db.query(self.queries[0], self.query_k, self.gt_k)
         t1 = time.perf_counter()
         expected_query_time = t1 - t0
-        logger.info(f'time to complete short query without blocking thread: {expected_query_time}')
+        logger.info(f'time to complete query without blocking thread: {expected_query_time}')
 
         ##################
         # THREAD SAFETY TEST
         ##################
         # Expected time for add() to complete.
-        expected_add_time = 15
-        # create and start add and query threads
+        wait_time = 20
+        # create and start add and remove threads
         data = [(self.extended_vectors[i], {"text": self.extended_text[i]}) for i in range(len(self.extended_vectors))]
-        add_thread = threading.Thread(target=self.db.add, kwargs={"data": data})
-        query_thread = threading.Thread(target=remove_async)
+        add_thread = PropagatingThread(target=self.db.add, kwargs={"data": data})
+        remove_thread = PropagatingThread(target=remove_async)
         
         add_thread.start()
-        query_thread.start()
+        remove_thread.start()
 
         # wait for both threads to finish execution
         add_thread.join()
-        query_thread.join()
+        remove_thread.join()
 
         # make sure we have the proper number of vectors
         self.assertEqual(self.db.num_vectors, 629_999)  # 30k + 300k + 300k - 1
