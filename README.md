@@ -47,4 +47,4 @@ You can also learn more about FastAPI [here](https://fastapi.tiangolo.com).
 
 
 ## Join the spDB community
-Join our Discord [here]()
+Join our Discord [here](https://discord.gg/XY5ErJgE2q)
