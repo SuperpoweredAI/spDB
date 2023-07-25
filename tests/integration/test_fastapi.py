@@ -81,7 +81,21 @@ class TestFastAPI(unittest.TestCase):
             "compressed_vector_bytes": self.compressed_vector_bytes,
             "omit_opq": True
         })
+        operation_id = response.json()["operation_id"]
         self.assertTrue(response.status_code == 200)
+        time.sleep(10)
+
+        tries = 0
+        while tries < 10:
+            response = self.client.get(f"/training_status/{operation_id}")
+            status = response.json()["status"]
+            if status == "completed":
+                break
+            else:
+                tries += 1
+                time.sleep(10)
+
+        self.assertEqual(status, "completed")
 
     def test__004_query(self):
         # Test a single query
@@ -108,3 +122,6 @@ class TestFastAPI(unittest.TestCase):
     def test__006_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         assert response.status_code == 200
+
+if __name__ == "__main__":
+    unittest.main()
