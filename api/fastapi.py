@@ -60,6 +60,10 @@ class TrainDBInput(BaseModel):
    omit_opq: Optional[bool] = False
 
 
+@app.get("/health")
+def read_root():
+    return {"status": "healthy"}
+
 # API routes
 @app.post("/db/create")
 def create_db(create_db_input: CreateDBInput):
