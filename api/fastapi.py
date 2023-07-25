@@ -3,6 +3,8 @@ import sys
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
+import threading
+import uuid
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../'))
@@ -25,6 +27,7 @@ db_names = os.listdir(db_path)
 # Create a dictionary of databases keyed on name
 databases = {name: load_db(name) for name in db_names}
 
+operations = {}
 
 # Define request and response models
 class AddInput(BaseModel):
@@ -85,19 +88,45 @@ def remove_vectors(db_name: str, vector_ids: List[int]):
    return {"message": "Vectors and text removed successfully"}
 
 
-@app.post("/db/{db_name}/train")
-def train_db(db_name: str, train_db_input: TrainDBInput):
+
+def train_db(db_name: str, train_db_input: TrainDBInput, operation_id: str):
    if db_name not in databases:
        raise HTTPException(status_code=404, detail="Database not found")
    db = databases[db_name]
-   db.train(
-       use_two_level_clustering=train_db_input.use_two_level_clustering,
-       pca_dimension=train_db_input.pca_dimension,
-       opq_dimension=train_db_input.opq_dimension,
-       compressed_vector_bytes=train_db_input.compressed_vector_bytes,
-       omit_opq=train_db_input.omit_opq
-   )
-   return {"message": "Database trained successfully"}
+   try:
+      db.train(
+         use_two_level_clustering=train_db_input.use_two_level_clustering,
+         pca_dimension=train_db_input.pca_dimension,
+         opq_dimension=train_db_input.opq_dimension,
+         compressed_vector_bytes=train_db_input.compressed_vector_bytes,
+         omit_opq=train_db_input.omit_opq
+      )
+      operations[operation_id] = "completed"
+   except Exception as e:
+        # If there's an error during training, update the operation status to 'failed'
+        operations[operation_id] = f"failed: {str(e)}"
+
+
+@app.post("/db/{db_name}/train")
+def start_train_db(db_name: str, train_db_input: TrainDBInput):
+    if db_name not in databases:
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    operation_id = str(uuid.uuid4())
+    operations[operation_id] = "in progress"
+
+    thread = threading.Thread(target=train_db, args=(db_name, train_db_input, operation_id))
+    thread.start()
+
+    return {"operation_id": operation_id}
+
+
+@app.get("/training_status/{operation_id}")
+def get_operation_status(operation_id: str):
+    if operation_id not in operations:
+        raise HTTPException(status_code=404, detail="Operation not found")
+
+    return {"status": operations[operation_id]}
 
 
 @app.post("/db/{db_name}/query")
@@ -152,4 +181,3 @@ Usage
 # Run the server using Uvicorn
 # uvicorn app:app --host 0.0.0.0 --port 8000
 """
-
