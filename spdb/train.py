@@ -39,7 +39,7 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
     n_probe = utils.get_n_probe(num_clusters)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
 
-    return index
+    return index, vector_ids
 
 
 def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension: int, pca_dimension: int, opq_dimension: int, compressed_vector_bytes: int, max_memory_usage: int, omit_opq: bool, num_clusters: int = None) -> faiss.IndexPreTransform:
@@ -82,7 +82,7 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
     n_probe = utils.get_n_probe(num_clusters)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
 
-    return index
+    return index, vector_ids
 
 
 def train_small_index(uncompressed_vectors_lmdb_path: str, vector_dimension: int, max_memory_usage: int) -> faiss.IndexPreTransform:

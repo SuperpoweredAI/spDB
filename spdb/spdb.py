@@ -275,7 +275,7 @@ class spDB:
         
         if use_two_level_clustering:
             logger.info('Training with two-level clustering')
-            new_faiss_index = train.train_with_two_level_clustering(
+            new_faiss_index, lmdb_index_ids = train.train_with_two_level_clustering(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
                 vector_dimension=self.vector_dimension,
                 pca_dimension=pca_dimension,
@@ -289,7 +289,7 @@ class spDB:
                 self.faiss_index = new_faiss_index
         else:
             logger.info('Training with subsampling')
-            new_faiss_index = train.train_with_subsampling(
+            new_faiss_index, lmdb_index_ids = train.train_with_subsampling(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
                 vector_dimension=self.vector_dimension,
                 pca_dimension=pca_dimension,
@@ -302,7 +302,6 @@ class spDB:
             with self._faiss_lock:
                 self.faiss_index = new_faiss_index
         
-        lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
         # Save the index ids to a pickle file
         with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
             pickle.dump(lmdb_index_ids, f)
