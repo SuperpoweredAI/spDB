@@ -118,6 +118,12 @@ def start_train_db(db_name: str, train_db_input: TrainDBInput):
     if db_name not in databases:
         raise HTTPException(status_code=404, detail="Database not found")
 
+    # Check if this db is already training
+    if db_name in operations:
+        status = operations[db_name]
+        if status == "in progress":
+            raise HTTPException(status_code=400, detail="This database is in the process of training already")
+    
     operations[db_name] = "in progress"
 
     thread = threading.Thread(target=train_db, args=(
