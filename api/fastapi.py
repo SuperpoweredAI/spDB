@@ -95,7 +95,7 @@ def remove_vectors(db_name: str, vector_ids: List[int]):
     return {"message": "Vectors and text removed successfully"}
 
 
-def train_db(db_name: str, train_db_input: TrainDBInput, operation_id: str):
+def train_db(db_name: str, train_db_input: TrainDBInput):
     if db_name not in databases:
         raise HTTPException(status_code=404, detail="Database not found")
     db = databases[db_name]
@@ -107,10 +107,10 @@ def train_db(db_name: str, train_db_input: TrainDBInput, operation_id: str):
             compressed_vector_bytes=train_db_input.compressed_vector_bytes,
             omit_opq=train_db_input.omit_opq
         )
-        operations[operation_id] = "completed"
+        operations[db_name] = "completed"
     except Exception as e:
         # If there's an error during training, update the operation status to 'failed'
-        operations[operation_id] = f"failed: {str(e)}"
+        operations[db_name] = f"failed: {str(e)}"
 
 
 @app.post("/db/{db_name}/train")
@@ -118,22 +118,21 @@ def start_train_db(db_name: str, train_db_input: TrainDBInput):
     if db_name not in databases:
         raise HTTPException(status_code=404, detail="Database not found")
 
-    operation_id = str(uuid.uuid4())
-    operations[operation_id] = "in progress"
+    operations[db_name] = "in progress"
 
     thread = threading.Thread(target=train_db, args=(
-        db_name, train_db_input, operation_id))
+        db_name, train_db_input))
     thread.start()
 
-    return {"operation_id": operation_id}
+    return {"status": "training successfully initiated"}
 
 
-@app.get("/training_status/{operation_id}")
-def get_operation_status(operation_id: str):
-    if operation_id not in operations:
+@app.get("/db/{db_name}/train_status")
+def get_operation_status(db_name: str):
+    if db_name not in operations:
         raise HTTPException(status_code=404, detail="Operation not found")
 
-    return {"status": operations[operation_id]}
+    return {"status": operations[db_name]}
 
 
 @app.post("/db/{db_name}/query")
