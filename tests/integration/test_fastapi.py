@@ -194,6 +194,3 @@ class TestFastAPI(unittest.TestCase):
     def test__008_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         assert response.status_code == 200
-
-if __name__ == "__main__":
-    unittest.main()
