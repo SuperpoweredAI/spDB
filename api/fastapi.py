@@ -224,6 +224,7 @@ def train_db(db_name: str, train_db_input: TrainDBInput):
     operations[db_name] = "complete"
 
     time.sleep(5)
+    # Perform the cleanup operation to make sure all of the vectors have been added to the faiss index
     cleanup_training(db_name)
 
 

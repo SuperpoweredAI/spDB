@@ -1,4 +1,3 @@
-from fastapi import FastAPI
 from fastapi.testclient import TestClient # requires httpx
 import sys
 import os
@@ -63,7 +62,11 @@ class TestFastAPI(unittest.TestCase):
         vectors.extend(vectors)
         text.extend(text)
 
-        for sleep_time in [5, 20, 30]:
+        # Using different sleep times to test different scenarios
+        # One for adding all vectors while training is running, but before it is complete
+        # One for adding vectors both during training, and after training is complete
+        # One for adding vectors only after training is complete
+        for sleep_time in [5, 25, 45]:
 
             ### Create a new database ###
             response = self.client.post("/db/create", json={"name": self.db_name})
@@ -171,7 +174,3 @@ class TestFastAPI(unittest.TestCase):
         # This can fail since the DB should have already deleted, so we can't assert a status
         # But it's fine if it fails, since we just want to make sure the DB is deleted
 
-
-
-if __name__ == "__main__":
-    unittest.main()
