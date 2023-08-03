@@ -54,6 +54,7 @@ class spDB:
         """
         self.name = name
         self._faiss_lock = threading.Lock()
+        self._lmdb_lock = threading.Lock()
         self._save_path = get_spdb_path(name, save_path)
 
         if create_or_load == 'create':
@@ -136,7 +137,8 @@ class spDB:
         """
         Get the number of vectors in the database.
         """
-        return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
+        with self._lmdb_lock:
+            return lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
     
     @property
     def trained_index_coverage_ratio(self):
@@ -148,7 +150,8 @@ class spDB:
             return 0
 
         # Get the current ids in the lmdb index
-        lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
+        with self._lmdb_lock:
+            lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
 
         # Load in the pickled index ids
         with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'rb') as f:
@@ -156,7 +159,7 @@ class spDB:
         
         return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)
 
-    def add(self, data: list[tuple[np.ndarray, dict]]) -> list:
+    def add(self, data: list[tuple[np.ndarray, dict]], add_to_new_faiss_index: bool = False) -> list:
         """
         Add vectors and their corresponding text to the database.
 
@@ -173,9 +176,7 @@ class spDB:
             data, self.vector_dimension, self.num_vectors, self.max_memory_usage, is_flat_index)
         if not is_valid:
             raise ValueError(reason)
-        
-        logger.info(f'Adding {vectors.shape[0]} vectors to the database')
-        
+                
         if is_flat_index:
             # Check the number of vectors in the index
             if self.faiss_index.ntotal + vectors.shape[0] >= 50000:
@@ -185,38 +186,40 @@ class spDB:
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
-        t0 = time.time()
-        lmdb_utils.add_items_to_lmdb(
-            db_path=self.lmdb_uncompressed_vectors_path,
-            items=vectors,
-            ids=ids,
-            encode_fn=np.ndarray.tobytes
-        )
-        logger.info(f'Added vectors to lmdb in {time.time() - t0} seconds')
-        t0 = time.time()
-        lmdb_utils.add_items_to_lmdb(
-            db_path=self.lmdb_metadata_path,
-            items=metadata,
-            ids=ids,
-            encode_fn=str.encode
-        )
-        logger.info(f'Added metadata to lmdb in {time.time() - t0} seconds')
+        with self._lmdb_lock:
+            lmdb_utils.add_items_to_lmdb(
+                db_path=self.lmdb_uncompressed_vectors_path,
+                items=vectors,
+                ids=ids,
+                encode_fn=np.ndarray.tobytes
+            )
+        
+        with self._lmdb_lock:
+            lmdb_utils.add_items_to_lmdb(
+                db_path=self.lmdb_metadata_path,
+                items=metadata,
+                ids=ids,
+                encode_fn=str.encode
+            )
 
         # If the index is not trained, don't add the vectors to the index
-        t0 = time.time()
-        logger.info('About to add vectors to faiss index')
         if self.faiss_index is not None:
             # TODO: transform vectors if necessary
             with self._faiss_lock:
                 self.faiss_index.add_with_ids(vectors, ids)
-        logger.info(f'Added vectors to faiss index in {time.time() - t0} seconds')
+        
+        # Add the vectors to the new faiss index if necessary
+        if add_to_new_faiss_index:
+            self.new_faiss_index.add_with_ids(vectors, ids)
+        
+        logger.info(f'Added vectors and text to LMDB and faiss index')
 
         self._vector_dimension = vectors.shape[1]
         self.save()
 
         return ids
 
-    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False, num_clusters: int = None) -> None:
+    def train(self, use_two_level_clustering: bool = None, pca_dimension: int = None, opq_dimension: int = None, compressed_vector_bytes: int = None, omit_opq: bool = False, num_clusters: int = None, perform_clean_up: bool = False) -> None:
         """
         Train the Faiss index for efficient vector search.
 
@@ -258,7 +261,8 @@ class spDB:
             index = train.train_small_index(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
                 vector_dimension=self.vector_dimension,
-                max_memory_usage=self.max_memory_usage
+                max_memory_usage=self.max_memory_usage,
+                lmdb_lock=self._lmdb_lock,
             )
             with self._faiss_lock:
                 self.faiss_index = index
@@ -275,7 +279,7 @@ class spDB:
         
         if use_two_level_clustering:
             logger.info('Training with two-level clustering')
-            new_faiss_index = train.train_with_two_level_clustering(
+            new_faiss_index, lmdb_index_ids = train.train_with_two_level_clustering(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
                 vector_dimension=self.vector_dimension,
                 pca_dimension=pca_dimension,
@@ -283,13 +287,12 @@ class spDB:
                 compressed_vector_bytes=compressed_vector_bytes,
                 max_memory_usage=self.max_memory_usage,
                 omit_opq=omit_opq,
+                lmdb_lock=self._lmdb_lock,
                 num_clusters=num_clusters
             )
-            with self._faiss_lock:
-                self.faiss_index = new_faiss_index
         else:
             logger.info('Training with subsampling')
-            new_faiss_index = train.train_with_subsampling(
+            new_faiss_index, lmdb_index_ids = train.train_with_subsampling(
                 uncompressed_vectors_lmdb_path=self.lmdb_uncompressed_vectors_path,
                 vector_dimension=self.vector_dimension,
                 pca_dimension=pca_dimension,
@@ -297,17 +300,37 @@ class spDB:
                 compressed_vector_bytes=compressed_vector_bytes,
                 max_memory_usage=self.max_memory_usage,
                 omit_opq=omit_opq,
+                lmdb_lock=self._lmdb_lock,
                 num_clusters=num_clusters
             )
-            with self._faiss_lock:
-                self.faiss_index = new_faiss_index
+
+        logger.info('Setting the new faiss index')
+        self.new_faiss_index = new_faiss_index
         
-        lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
         # Save the index ids to a pickle file
         with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
             pickle.dump(lmdb_index_ids, f)
 
         self.save()
+    
+    def add_unassigned_vectors(self, vector_ids: list, set_new_faiss_index: bool = False) -> None:
+        # Add the unassigned vectors to the new faiss index
+
+        # First, get the vectors from the LMDB for the unassigned vector IDs
+        with self._lmdb_lock:
+            unassigned_vectors = lmdb_utils.get_lmdb_vectors_by_ids(self.lmdb_uncompressed_vectors_path, vector_ids)
+
+        try:
+            self.new_faiss_index.add_with_ids(unassigned_vectors, vector_ids)
+        except Exception as e:
+            print ("Exception in add_unassigned_vectors", e)
+            print ("No new faiss index")
+            return False
+
+        logger.info(f'Added {len(vector_ids)} unassigned vectors to the new Faiss index')
+        
+        return True
+
 
     def query(self, query_vector: np.ndarray, preliminary_top_k: int = 500, final_top_k: int = 100) -> list:
         """
@@ -343,9 +366,11 @@ class spDB:
                     # Show a warning message
                     logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
                 _, I = self.faiss_index.search(query_vector, final_top_k)
-                corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
-                    self.lmdb_uncompressed_vectors_path, I)
-                metadata = lmdb_utils.get_lmdb_metadata_by_ids(self.lmdb_metadata_path, I.tolist()[0])
+                with self._lmdb_lock:
+                    corpus_vectors, _ = lmdb_utils.get_ranked_vectors(
+                        self.lmdb_uncompressed_vectors_path, I)
+                with self._lmdb_lock:
+                    metadata = lmdb_utils.get_lmdb_metadata_by_ids(self.lmdb_metadata_path, I.tolist()[0])
                 cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
                 
                 return {
@@ -356,8 +381,9 @@ class spDB:
             else:
                 _, I = self.faiss_index.search(query_vector, preliminary_top_k)
 
-        corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
-            self.lmdb_uncompressed_vectors_path, I)
+        with self._lmdb_lock:
+            corpus_vectors, position_to_id_map = lmdb_utils.get_ranked_vectors(
+                self.lmdb_uncompressed_vectors_path, I)
 
         # brute force search full vectors to find true top_k
         _, reranked_I = knn(query_vector, corpus_vectors, final_top_k)
@@ -369,9 +395,10 @@ class spDB:
         # Get the ids of the reranked vectors
         reranked_ids = [position_to_id_map[position] for position in reranked_I[0]]
 
-        reranked_metadata = lmdb_utils.get_lmdb_metadata_by_ids(
-            self.lmdb_metadata_path, reranked_ids
-        )
+        with self._lmdb_lock:
+            reranked_metadata = lmdb_utils.get_lmdb_metadata_by_ids(
+                self.lmdb_metadata_path, reranked_ids
+            )
 
         return {
             "ids": reranked_ids,
@@ -395,28 +422,28 @@ class spDB:
             raise ValueError(reason)
 
         # Remove the vectors from the faiss index (has to be done first)
-        t0 = time.time()
-        logger.info(f'Removing {len(vector_ids)} vectors from the Faiss index')
+        
         with self._faiss_lock:
             self.faiss_index.remove_ids(vector_ids)
         # Save here in case something fails in the LMDB removal.
         # We can't have ids in the faiss index that don't exist in the LMDB
-        logger.info(f'Finished removing vectors from the Faiss index in {time.time() - t0} seconds')
         self.save()
 
         t0 = time.time()
         # remove vectors from LMDB
-        lmdb_utils.remove_from_lmdb(
-            db_path=self.lmdb_uncompressed_vectors_path,
-            ids=vector_ids
-        )
+        with self._lmdb_lock:
+            lmdb_utils.remove_from_lmdb(
+                db_path=self.lmdb_uncompressed_vectors_path,
+                ids=vector_ids
+            )
 
         # remove text from LMDB
-        lmdb_utils.remove_from_lmdb(
-            db_path=self.lmdb_metadata_path,
-            ids=vector_ids
-        )
-        logger.info(f'Finished removing vectors and text from LMDB in {time.time() - t0} seconds')
+        with self._lmdb_lock:
+            lmdb_utils.remove_from_lmdb(
+                db_path=self.lmdb_metadata_path,
+                ids=vector_ids
+            )
+        logger.info(f'Finished removing vectors and text from LMDB and faiss index')
 
     def save(self) -> None:
         """
