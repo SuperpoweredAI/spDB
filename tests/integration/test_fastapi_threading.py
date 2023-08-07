@@ -256,6 +256,3 @@ class TestFastAPI(unittest.TestCase):
         response = self.client.post(f"/db/{self.db_name}/delete")
         # This can fail since the DB should have already deleted, so we can't assert a status
         # But it's fine if it fails, since we just want to make sure the DB is deleted
-
-if __name__ == "__main__":
-    unittest.main()
