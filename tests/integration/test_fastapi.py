@@ -60,7 +60,7 @@ class TestFastAPI(unittest.TestCase):
 
     def test__002_add(self):
         # Add vectors to the index
-        batch_size = 100
+        batch_size = 1000
         for i in range(0, len(self.vectors), batch_size):
             print (i)
             data = []
@@ -147,26 +147,39 @@ class TestFastAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         db_info = json.loads(response.json()["db_info"])
+        print ("db_info", db_info)
         num_vectors = db_info["num_vectors"]
         n_total = db_info["n_total"]
+        num_new_vectors = db_info["num_new_vectors"]
         trained_index_coverage_ratio = db_info["trained_index_coverage_ratio"]
         print ("trained_index_coverage_ratio", trained_index_coverage_ratio)
 
         self.assertEqual(num_vectors, 32000)
         self.assertEqual(n_total, 32000)
-        self.assertLess(trained_index_coverage_ratio, 1.0)
+        self.assertEqual(num_new_vectors, 2000)
+        self.assertEqual(trained_index_coverage_ratio, 0.9375)
     
 
     def test__005_remove(self):
 
         # Remove the extra 2000 vectors that were added, since they are just copies of the first 2000 vectors
-        batch_size = 100
+        batch_size = 1000
         # The ids are 30000 to 31999
         for i in range(30000, 32000, batch_size):
             print (i)
             ids = list(range(i, i+batch_size))
             response = self.client.post(f"/db/{self.db_name}/remove", json={"ids": ids})
         self.assertTrue(response.status_code == 200)
+
+        # Make sure there are no new vectors left after the removal
+        response = self.client.get(f"/db/{self.db_name}/info")
+        db_info = json.loads(response.json()["db_info"])
+        num_new_vectors = db_info["num_new_vectors"]
+        self.assertEqual(num_new_vectors, 0)
+
+        # The trained index coverage ratio should be 1 now
+        trained_index_coverage_ratio = db_info["trained_index_coverage_ratio"]
+        self.assertEqual(trained_index_coverage_ratio, 1.0)
 
 
     def test__006_query(self):
@@ -190,7 +203,28 @@ class TestFastAPI(unittest.TestCase):
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
+    
 
-    def test__008_tear_down(self):
+    def test__008_remove_trained_vectors(self):
+
+        # Remove the first 15000 vectors (Done after the full eval so it doesn't mess with recall)
+        batch_size = 1000
+        for i in range(0, 15000, batch_size):
+            print (i)
+            ids = list(range(i, i+batch_size))
+            response = self.client.post(f"/db/{self.db_name}/remove", json={"ids": ids})
+        self.assertTrue(response.status_code == 200)
+
+        # Make sure there are no new vectors left after the removal
+        response = self.client.get(f"/db/{self.db_name}/info")
+        db_info = json.loads(response.json()["db_info"])
+        num_trained_vectors_removed = db_info["num_trained_vectors_removed"]
+        self.assertEqual(num_trained_vectors_removed, 15000)
+
+        # The trained index coverage ratio should be 0.5 now
+        trained_index_coverage_ratio = db_info["trained_index_coverage_ratio"]
+        self.assertEqual(trained_index_coverage_ratio, 0.5)
+
+    def test__009_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         assert response.status_code == 200

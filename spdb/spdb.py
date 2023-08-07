@@ -70,6 +70,11 @@ class spDB:
         self.max_memory_usage = max_memory_usage
         self.faiss_index = None
 
+        self.max_trained_id = 0
+        self.num_vectors_trained_on = 0
+        self.num_new_vectors = 0
+        self.num_trained_vectors_removed = 0
+
         # Create the save directory if it doesn't exist and return an exception if it already does exist
         if os.path.exists(self.save_path):
             raise Exception(f"Database with name {self.name} already exists. Please choose a different name.")
@@ -146,7 +151,10 @@ class spDB:
         Get the coverage ratio of the trained index.
         """
 
-        if not os.path.exists(os.path.join(self.save_path, 'trained_index_vector_ids.pickle')):
+        return utils.calculate_trained_index_coverage_ratio(
+            self.num_vectors_trained_on, self.num_new_vectors, self.num_trained_vectors_removed)
+
+        """if not os.path.exists(os.path.join(self.save_path, 'trained_index_vector_ids.pickle')):
             return 0
 
         # Get the current ids in the lmdb index
@@ -157,7 +165,7 @@ class spDB:
         with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'rb') as f:
             saved_lmdb_index_ids = pickle.load(f)
         
-        return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)
+        return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)"""
 
     def add(self, data: list[tuple[np.ndarray, dict]], add_to_new_faiss_index: bool = False) -> list:
         """
@@ -215,6 +223,7 @@ class spDB:
         logger.info(f'Added vectors and text to LMDB and faiss index')
 
         self._vector_dimension = vectors.shape[1]
+        self.update_training_data_stats(ids_added=ids)
         self.save()
 
         return ids
@@ -303,17 +312,27 @@ class spDB:
                 lmdb_lock=self._lmdb_lock,
                 num_clusters=num_clusters
             )
+        
+        # Save the max id used when training the index
+        # Convert each value of lmdb_index_ids to an int
+        lmdb_index_ids = [int(i) for i in lmdb_index_ids]
+        self.max_trained_id = max(lmdb_index_ids)
+        self.num_vectors_trained_on = len(lmdb_index_ids)
+
+        # Reset the number of new vectors and number of trained vectors removed to 0
+        self.num_new_vectors = 0
+        self.num_trained_vectors_removed = 0
 
         logger.info('Setting the new faiss index')
         self.new_faiss_index = new_faiss_index
         
         # Save the index ids to a pickle file
-        with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
-            pickle.dump(lmdb_index_ids, f)
+        #with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
+        #    pickle.dump(lmdb_index_ids, f)
 
         self.save()
     
-    def add_unassigned_vectors(self, vector_ids: list, set_new_faiss_index: bool = False) -> None:
+    def add_unassigned_vectors(self, vector_ids: list) -> None:
         # Add the unassigned vectors to the new faiss index
 
         # First, get the vectors from the LMDB for the unassigned vector IDs
@@ -326,6 +345,9 @@ class spDB:
             print ("Exception in add_unassigned_vectors", e)
             print ("No new faiss index")
             return False
+        
+        # These vectors won't be part of the training dataset, so they are new vectors
+        self.num_new_vectors += len(vector_ids)
 
         logger.info(f'Added {len(vector_ids)} unassigned vectors to the new Faiss index')
         
@@ -406,7 +428,7 @@ class spDB:
             'cosine_similarity': cosine_similarity
         }
     
-    def remove(self, vector_ids: np.ndarray) -> None:
+    def remove(self, vector_ids: np.ndarray, remove_from_lmdb: bool = True) -> None:
         """
         Remove vectors and their corresponding text from the database.
 
@@ -422,20 +444,27 @@ class spDB:
             raise ValueError(reason)
 
         # Remove the vectors from the faiss index (has to be done first)
-        
         with self._faiss_lock:
             self.faiss_index.remove_ids(vector_ids)
         # Save here in case something fails in the LMDB removal.
         # We can't have ids in the faiss index that don't exist in the LMDB
         self.save()
 
-        t0 = time.time()
+        # If there is a training operation going on, remove_from_lmdb will be False
+        # We can't remove from the LMDB while it is being trained, since we could 
+        # remove a vector that is part of the training data, which would throw and error
+        if not remove_from_lmdb:
+            logger.info(f'Finished removing vectors from faiss index')
+            return
+
         # remove vectors from LMDB
         with self._lmdb_lock:
-            lmdb_utils.remove_from_lmdb(
+            ids_deleted = lmdb_utils.remove_from_lmdb(
                 db_path=self.lmdb_uncompressed_vectors_path,
                 ids=vector_ids
             )
+        # Update the number of ids removed that were part of the training data, and the number of new ids
+        self.update_training_data_stats(ids_deleted=ids_deleted)
 
         # remove text from LMDB
         with self._lmdb_lock:
@@ -475,6 +504,26 @@ class spDB:
         config_file_path = os.path.join(self.save_path, 'config.json')
         with open(config_file_path, 'w') as f:
             json.dump(config_params, f)
+    
+    def update_training_data_stats(self, ids_deleted: list = [], ids_added: list = []):
+
+        # Handle the ids deleted
+        count_removed = 0
+        for id in ids_deleted:
+            if id > self.max_trained_id:
+                # This id was not part of the training data
+                self.num_new_vectors -= 1
+            else:
+                # This id was part of the training data
+                self.num_trained_vectors_removed += 1
+                count_removed += 1
+        
+        # These will always be new vectors
+        count_added = 0
+        for id in ids_added:
+            self.num_new_vectors += 1
+            count_added += 1
+
 
     def delete(self):
         """Remove the spdb object and its associated files from disk."""

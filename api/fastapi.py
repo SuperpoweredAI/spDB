@@ -30,6 +30,7 @@ databases = {name: load_db(name) for name in db_names}
 
 operations = {}
 unassigned_vectors = {}
+vectors_to_remove = {}
 
 # Define request and response models
 
@@ -92,7 +93,10 @@ def get_info(db_name: str):
         "n_total": n_total,
         "max_id": db.max_id,
         "lmdb_uncompressed_vectors_path": db.lmdb_uncompressed_vectors_path,
-        "unassigned_vectors": unassigned_vectors
+        "max_trained_id": db.max_trained_id,
+        "num_vectors_trained_on": db.num_vectors_trained_on,
+        "num_new_vectors": db.num_new_vectors,
+        "num_trained_vectors_removed": db.num_trained_vectors_removed,
     }
 
     # Turn the object into a string so it can be returned
@@ -140,11 +144,24 @@ def add_vectors(db_name: str, data: AddInput):
 @app.post("/db/{db_name}/remove")
 def remove_vectors_by_id(db_name: str, ids: RemoveInput):
 
+    training_status = "untrained"
+    if (db_name in operations):
+        training_status = operations[db_name]
+    
+    remove_from_lmdb = True
+    if training_status == "trained" or training_status == "in progress":
+        # We can't remove vectors from LMDB if the index is being trained
+        remove_from_lmdb = False
+        # Add these vector ids to a list of vectors to be removed from LMDB once training is complete
+        if db_name not in vectors_to_remove:
+            vectors_to_remove[db_name] = []
+        vectors_to_remove[db_name].extend(ids)
+
     if db_name not in databases:
         raise HTTPException(status_code=404, detail="Database not found")
     
     db = databases[db_name]
-    db.remove(vector_ids=ids.ids)
+    db.remove(vector_ids=ids.ids, remove_from_lmdb=remove_from_lmdb)
 
     return {"message": f"{len(ids.ids)} vectors removed successfully"}
 
@@ -166,6 +183,14 @@ def cleanup_training(db_name: str):
             with db._faiss_lock:
                 db.faiss_index.add_with_ids(vectors, batch_ids)
                 unassigned_vectors[db_name] = unassigned_vectors[db_name][batch_size:]
+    
+    # Handle any vectors that need to be removed from LMDB
+    if (db_name in vectors_to_remove):
+        batch_size = 500
+        while len(vectors_to_remove[db_name]) > 0:
+            batch_ids = vectors_to_remove[db_name][:batch_size]
+            db.remove(vector_ids=batch_ids, remove_from_lmdb=True)
+            vectors_to_remove[db_name] = vectors_to_remove[db_name][batch_size:]
             
 
 def train_db(db_name: str, train_db_input: TrainDBInput):
@@ -195,13 +220,8 @@ def train_db(db_name: str, train_db_input: TrainDBInput):
         num_iters = 0
         while len(unassigned_vectors[db_name]) > 0:
             batch_ids = unassigned_vectors[db_name][:batch_size]
-
-            if len(batch_ids) >= len(unassigned_vectors[db_name]):
-                set_new_faiss_index = True
-            else:
-                set_new_faiss_index = False
             
-            success = db.add_unassigned_vectors(vector_ids=batch_ids, set_new_faiss_index=set_new_faiss_index)
+            success = db.add_unassigned_vectors(vector_ids=batch_ids)
 
             """if not success:
                 # This means we couldn't add the vectors to the new faiss index, so we should pause for a second
