@@ -166,11 +166,93 @@ class TestFastAPI(unittest.TestCase):
             ### Delete the DB
             response = self.client.post(f"/db/{self.db_name}/delete")
             assert response.status_code == 200
+    
+
+
+    def test__002_remove_while_training(self):
+
+        vectors = self.vectors
+        text = self.text
+
+        ### Create a new database ###
+        response = self.client.post("/db/create", json={"name": self.db_name})
+        print (response.text)
+        self.assertTrue(response.status_code == 200)
+
+
+        ### Add the data ###
+        batch_size = 1000
+        for i in range(0, len(vectors), batch_size):
+            data = []
+            for j in range(i, i+batch_size):
+                data.append((vectors[j], {"text": text[j]}))
+            response = self.client.post(f"/db/{self.db_name}/add", json={"add_data": data})
+        self.assertTrue(response.status_code == 200)
+
+
+        ### Train the index ###
+        response = self.client.post(f"/db/{self.db_name}/train", json={
+            "use_two_level_clustering": True,
+            "pca_dimension": self.pca_dimension,
+            "opq_dimension": self.opq_dimension,
+            "compressed_vector_bytes": self.compressed_vector_bytes,
+            "omit_opq": True
+        })
+        self.assertTrue(response.status_code == 200)
+
+        time.sleep(5)
+
+        ### Remove vectors while training ###
+        batch_size = 1000
+        for i in range(0, 10000, batch_size):
+            print (i)
+            ids = list(range(i, i+batch_size))
+            response = self.client.post(f"/db/{self.db_name}/remove", json={"ids": ids})
+        self.assertTrue(response.status_code == 200)
+
+        # There should be 30000 vectors total, but only 20000 in the faiss index
+        # This is because we remove the vectors from faiss, but not from LMDB when a training operation is happening
+        response = self.client.get(f"/db/{self.db_name}/info")
+        db_info = json.loads(response.json()["db_info"])
+
+        n_total = db_info["n_total"]
+        num_vectors = db_info["num_vectors"]
+        self.assertEqual(n_total, 20000)
+        self.assertEqual(num_vectors, 30000)
+
+
+        # Wait for the training to complete
+        tries = 0
+        while tries < 10:
+            response = self.client.get(f"/db/{self.db_name}/train")
+            status = response.json()["status"]
+            if status == "complete":
+                break
+            else:
+                tries += 1
+                time.sleep(10)
+
+        self.assertEqual(status, "complete")
+
+        # Once the training is complete, wait a little so the vectors can be removed
+        time.sleep(5)
+
+        # Get the db info again
+        response = self.client.get(f"/db/{self.db_name}/info")
+        self.assertEqual(response.status_code, 200)
+
+        # There should be 20000 vectors total, and 20000 in the faiss index
+        db_info = json.loads(response.json()["db_info"])
+        print ("db_info", db_info)
+
+        n_total = db_info["n_total"]
+        num_vectors = db_info["num_vectors"]
+        self.assertEqual(n_total, 20000)
+        self.assertEqual(num_vectors, 20000)
         
     
     ### Tear down ###
-    def test__002_tear_down(self):
+    def test__003_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         # This can fail since the DB should have already deleted, so we can't assert a status
         # But it's fine if it fails, since we just want to make sure the DB is deleted
-

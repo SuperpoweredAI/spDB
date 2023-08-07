@@ -133,13 +133,20 @@ def get_default_faiss_params(vector_dimension: int) -> dict:
             "compressed_vector_bytes": 128,
         }
 
-def calculate_trained_index_coverage_ratio(lmdb_index_ids: list, saved_lmdb_index_ids: list):
-    if (len(saved_lmdb_index_ids) == 0 or len(lmdb_index_ids) == 0):
+def calculate_trained_index_coverage_ratio(num_vectors_trained_on: int, num_new_vectors: int, num_trained_vectors_removed: int) -> float:
+
+    if num_vectors_trained_on == 0:
         return 0
-    # Get the intersection of the two sets of IDs
-    intersection = set(saved_lmdb_index_ids).intersection(set(lmdb_index_ids))
+
+    # Number of vectors trained that are still in the index
+    num_trained_vectors_left = num_vectors_trained_on - num_trained_vectors_removed
+
+    # Total number of vectors in the index
+    num_total_vectors = num_vectors_trained_on + num_new_vectors
+
     # Calculate the coverage ratio
-    coverage_ratio = len(intersection) / len(lmdb_index_ids)
+    coverage_ratio = num_trained_vectors_left / num_total_vectors
+
     return coverage_ratio
 
 def check_is_flat_index(index) -> bool:
@@ -155,3 +162,6 @@ def calculate_cosine_similarity(query_vector: np.ndarray, comparison_vectors: np
         cosine_similarity = np.dot(query_vector, vector)
         all_cosine_similarity.append(cosine_similarity)
     return all_cosine_similarity
+
+
+#def get_ids_

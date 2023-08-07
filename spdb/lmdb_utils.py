@@ -32,11 +32,14 @@ def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable)
 def remove_from_lmdb(db_path: str, ids: list):
     # remove the vectors to the LMDB
     env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
+    ids_deleted = []
     with env.begin(write=True) as txn:
         for id in ids:
-            txn.delete(str(id).encode('utf-8'))
+            if txn.get(str(id).encode('utf-8')) is not None:
+                txn.delete(str(id).encode('utf-8'))
+                ids_deleted.append(id)
     env.close()
-    # TODO: handle the case where the delete fails
+    return ids_deleted
 
 
 def get_ranked_vectors(uncompressed_vectors_lmdb_path: str, I: np.ndarray) -> tuple[np.ndarray, dict]:

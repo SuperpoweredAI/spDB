@@ -64,32 +64,60 @@ class TestDetermineOptimalTrainingMethod(unittest.TestCase):
 
 class TestCalculateTrainedIndexCoverageRatio(unittest.TestCase):
 
-    # Create a list of 1000 vectors from 0 to 999
-    lmdb_ids = range(1000)
-    # Create a list of 100 vectors from 0 to 99
-    saved_index_ids = range(100)
+    ### Full coverage ###
+    def test__full_coverage(self):
+
+        num_vectors_trained_on = 100_000
+        num_new_vectors = 0
+        num_trained_vectors_removed = 0
+
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(num_vectors_trained_on, num_new_vectors, num_trained_vectors_removed)
+
+        self.assertEqual(coverage_ratio, 1.0)
 
     ### Partial coverage ###
-    def test__calculate_trained_index_coverage_ratio__with_saved_index(self):
-        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.lmdb_ids, self.saved_index_ids)
-        self.assertEqual(coverage_ratio, 0.1)
-    
-    ### Full coverage ###
-    def test__calculate_trained_index_coverage_ratio__with_saved_index(self):
-        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.saved_index_ids, self.lmdb_ids)
-        self.assertEqual(coverage_ratio, 1)
+    def test__partial_coverage(self):
 
-    ### No saved ids (case where an index hasn't been trained yet) ###
-    def test__calculate_trained_index_coverage_ratio__no_saved_index(self):
-        coverage_ratio = utils.calculate_trained_index_coverage_ratio(self.lmdb_ids, [])
+        num_vectors_trained_on = 100_000
+        num_new_vectors = 100_000
+        num_trained_vectors_removed = 0
+
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(num_vectors_trained_on, num_new_vectors, num_trained_vectors_removed)
+
+        self.assertEqual(coverage_ratio, 0.5)
+    
+    ### No coverage ###
+    def test__no_coverage(self):
+
+        num_vectors_trained_on = 0
+        num_new_vectors = 100_000
+        num_trained_vectors_removed = 0
+
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(num_vectors_trained_on, num_new_vectors, num_trained_vectors_removed)
+
         self.assertEqual(coverage_ratio, 0)
     
-    ### No lmdb ids (case where someone removed all vectors, but previously trained an index) ###
-    def test__calculate_trained_index_coverage_ratio__no_lmdb_ids(self):
-        coverage_ratio = utils.calculate_trained_index_coverage_ratio([], self.saved_index_ids)
-        self.assertEqual(coverage_ratio, 0)
-        use_two_level_clustering = utils.is_two_level_clustering_optimal(max_memory_usage = 4*1024*1024*1024, vector_dimension = 768, num_vectors = 1000000)
-        self.assertEqual(use_two_level_clustering, False)
+    ### Partial coverage with vectors removed ###
+    def test__partial_coverage_vectors_removed(self):
+
+        num_vectors_trained_on = 100_000
+        num_new_vectors = 0
+        num_trained_vectors_removed = 50_000
+
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(num_vectors_trained_on, num_new_vectors, num_trained_vectors_removed)
+
+        self.assertEqual(coverage_ratio, 0.5)
+    
+    ### Partial coverage with vectors added and removed ###
+    def test__partial_coverage_vectors_added_and_removed(self):
+
+        num_vectors_trained_on = 100_000
+        num_new_vectors = 60_000
+        num_trained_vectors_removed = 20_000
+
+        coverage_ratio = utils.calculate_trained_index_coverage_ratio(num_vectors_trained_on, num_new_vectors, num_trained_vectors_removed)
+
+        self.assertEqual(coverage_ratio, 0.5)
 
 
 class TestCheckIsFlatIndex(unittest.TestCase):
