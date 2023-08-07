@@ -155,7 +155,7 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
         # Add these vector ids to a list of vectors to be removed from LMDB once training is complete
         if db_name not in vectors_to_remove:
             vectors_to_remove[db_name] = []
-        vectors_to_remove[db_name].extend(ids)
+        vectors_to_remove[db_name].extend(ids.ids)
 
     if db_name not in databases:
         raise HTTPException(status_code=404, detail="Database not found")

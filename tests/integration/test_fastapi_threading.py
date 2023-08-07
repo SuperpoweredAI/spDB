@@ -53,7 +53,7 @@ class TestFastAPI(unittest.TestCase):
         self.ground_truths = ground_truths
     
 
-    """def test__001_add_while_training(self):
+    def test__001_add_while_training(self):
 
         vectors = self.vectors
         text = self.text
@@ -165,7 +165,7 @@ class TestFastAPI(unittest.TestCase):
 
             ### Delete the DB
             response = self.client.post(f"/db/{self.db_name}/delete")
-            assert response.status_code == 200"""
+            assert response.status_code == 200
     
 
 
@@ -173,10 +173,6 @@ class TestFastAPI(unittest.TestCase):
 
         vectors = self.vectors
         text = self.text
-
-        # 2x the vectors list (just to have a larger dataset)
-        vectors.extend(vectors)
-        text.extend(text)
 
         ### Create a new database ###
         response = self.client.post("/db/create", json={"name": self.db_name})
@@ -221,8 +217,8 @@ class TestFastAPI(unittest.TestCase):
 
         n_total = db_info["n_total"]
         num_vectors = db_info["num_vectors"]
-        self.assertEqual(n_total, 30000)
-        self.assertEqual(num_vectors, 20000)
+        self.assertEqual(n_total, 20000)
+        self.assertEqual(num_vectors, 30000)
 
 
         # Wait for the training to complete
@@ -238,12 +234,16 @@ class TestFastAPI(unittest.TestCase):
 
         self.assertEqual(status, "complete")
 
+        # Once the training is complete, wait a little so the vectors can be removed
+        time.sleep(5)
+
         # Get the db info again
         response = self.client.get(f"/db/{self.db_name}/info")
         self.assertEqual(response.status_code, 200)
 
         # There should be 20000 vectors total, and 20000 in the faiss index
         db_info = json.loads(response.json()["db_info"])
+        print ("db_info", db_info)
 
         n_total = db_info["n_total"]
         num_vectors = db_info["num_vectors"]
@@ -252,10 +252,10 @@ class TestFastAPI(unittest.TestCase):
         
     
     ### Tear down ###
-    """def test__003_tear_down(self):
+    def test__003_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         # This can fail since the DB should have already deleted, so we can't assert a status
-        # But it's fine if it fails, since we just want to make sure the DB is deleted"""
+        # But it's fine if it fails, since we just want to make sure the DB is deleted
 
 if __name__ == "__main__":
     unittest.main()

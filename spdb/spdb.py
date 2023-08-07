@@ -191,6 +191,13 @@ class spDB:
                 # Show a warning message
                 logger.warning('The number of vectors in the index is greater than 50k. Please train your index for faster performance.')
 
+        # Check if the index is still None (This should only happen on the first add operation)
+        if self.faiss_index is None:
+            index = faiss.IndexFlat(vectors.shape[1])
+            faiss_index = faiss.IndexIDMap(index)
+            with self._faiss_lock:
+                self.faiss_index = faiss_index
+        
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
