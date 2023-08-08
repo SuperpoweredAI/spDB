@@ -98,7 +98,6 @@ def get_info(db_name: str):
         "num_vectors_trained_on": db.num_vectors_trained_on,
         "num_new_vectors": db.num_new_vectors,
         "num_trained_vectors_removed": db.num_trained_vectors_removed,
-        "is_flat_index": utils.check_is_flat_index(db.faiss_index),
     }
 
     # Turn the object into a string so it can be returned
@@ -182,8 +181,6 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
 
 
 def cleanup_training(db_name: str):
-
-    print ("Cleaning up training")
 
     # One last check to make sure there are no unassigned vectors
     db = databases[db_name]
@@ -346,17 +343,17 @@ def delete_db(db_name: str):
 
 
 def train_indexes():
-    print ("training_queue inside train indexes ", training_queue)
 
     for db_name in training_queue:
         if db_name not in operations or (db_name in operations and operations[db_name] == "complete"):
             print ("training ", db_name)
-            success = train_db(db_name)
-            training_queue.remove(db_name)
-
-            if not success:
+            try:
+                # We can't have this throw an error, so we wrap it in a try/except
+                success = train_db(db_name)
+            except:
                 # TODO: Alert us that something went wrong
                 pass
+            training_queue.remove(db_name)
         else:
             print ("training already in progress for ", db_name)
             continue
@@ -366,18 +363,17 @@ def train_indexes():
 def find_indexes_to_train():
     # Loop through all of the dbs and find the ones that need to be trained
 
-    print ("training_queue", training_queue)
+    if len(training_queue) > 0:
+        # If indexes are already being trained, return the training queue
+        # We can't have multiple indexes being trained at the same time in different threads, nor is it necessary
+        return {"training_queue": training_queue}
 
     for db_name in databases:
-        print ("db_name ", db_name)
         db = databases[db_name]
         needs_training = utils.check_needs_training(
             db_name, db.num_vectors, operations, db.trained_index_coverage_ratio)
-        print (f"{db_name} needs_training ", needs_training)
-        if needs_training and db_name not in training_queue:
-            print ("adding to training queue")
+        if needs_training:
             training_queue.append(db_name)
-            print ("training_queue ", training_queue)
     
     # Start training the indexes in a new thread
     thread = threading.Thread(target=train_indexes)

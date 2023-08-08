@@ -142,9 +142,10 @@ class TestAutoTrain(unittest.TestCase):
         print (response.json())
         indexes_to_train = response.json()["training_queue"]
 
-        # The only database that should be returned is the last one
-        self.assertTrue(indexes_to_train[1] == "fiqa_test_1")
-        self.assertTrue(len(indexes_to_train) == 2)
+        # The only database that should be returned is the last one, even though the first one needs to 
+        # be trained, it can't be trained while there is one ongoing
+        self.assertTrue(indexes_to_train[0] == "fiqa_test_3")
+        self.assertTrue(len(indexes_to_train) == 1)
 
 
         # Wait for the training to complete
@@ -205,3 +206,5 @@ class TestAutoTrain(unittest.TestCase):
         
         response = self.client.post(f"/db/fiqa_test_4/delete")
 
+if __name__ == "__main__":
+    unittest.main()
