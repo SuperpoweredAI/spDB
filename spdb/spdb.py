@@ -357,6 +357,8 @@ class spDB:
         :return: two lists containing the reranked text and their corresponding IDs, respectively.
         """
 
+        final_top_k = min(final_top_k, self.num_vectors)
+
         # Check if the query vector is a list, and if so, convert it to a numpy array
         if isinstance(query_vector, list):
             query_vector = np.array(query_vector, dtype=np.float32)
