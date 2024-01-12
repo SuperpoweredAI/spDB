@@ -73,6 +73,9 @@ class TrainDBInput(BaseModel):
 def read_root():
     return {"status": "healthy"}
 
+@app.get("/test")
+def read_root():
+    return {"status": "healthy"}
 
 @app.get("/db/{db_name}/info")
 def get_info(db_name: str):
@@ -342,6 +345,9 @@ def delete_db(db_name: str):
     db = databases[db_name]
     db.delete()
     del databases[db_name]
+    # If this db was in the operations dictionary, remove it
+    if db_name in operations:
+        del operations[db_name]
     return {"message": "Database deleted successfully"}
 
 
