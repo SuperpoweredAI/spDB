@@ -310,7 +310,7 @@ def query(db_name: str, query_input: QueryInput):
         query_vector=query_input.query_vector, preliminary_top_k=query_input.preliminary_top_k, final_top_k=query_input.final_top_k
     )
     end_time = time.time()
-    print ("query time", end_time - start_time)
+    #print ("query time", end_time - start_time)
     ids = results['ids']
     metadata = results['metadata']
     cosine_similarity = results['cosine_similarity']
