@@ -186,7 +186,11 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
 def cleanup_training(db_name: str):
 
     # One last check to make sure there are no unassigned vectors
-    db = databases[db_name]
+    # Make sure the db name is in the list of databases (this is a safeguard in case the db was deleted)
+    if (db_name in databases):
+        db = databases[db_name]
+    else:
+        return
     
     if (db_name in unassigned_vectors):
 

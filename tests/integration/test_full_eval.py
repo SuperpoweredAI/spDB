@@ -1,10 +1,14 @@
 """ Full end to end evaluation of the spDB using the fiqa Beir dataset """
-
+import os
+import sys
 import numpy as np
 import time
 import unittest
 
 import helpers
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from spdb.spdb import spDB, load_db
 from spdb import lmdb_utils
@@ -63,7 +67,7 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.db = db
 
         # Train the index
-        db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
+        self.db.train(True, self.pca_dimension, self.opq_dimension, self.compressed_vector_bytes, self.omit_opq)
 
         # Evaluate the index
         recall, latency, all_unique_ids, all_cosine_similarity = evaluate(
@@ -118,3 +122,6 @@ class TestFullSpdbEvaluation(unittest.TestCase):
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
+
+if __name__ == "__main__":
+    unittest.main()

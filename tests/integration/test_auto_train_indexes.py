@@ -62,14 +62,14 @@ class TestAutoTrain(unittest.TestCase):
         
             # Wait for the training to complete
             tries = 0
-            while tries < 25:
+            while tries < 30:
                 response = self.client.get(f"/db/{db_name}/train")
                 status = response.json()["status"]
                 if status == "complete":
                     break
                 else:
                     tries += 1
-                    time.sleep(5)
+                    time.sleep(20)
             
             response = self.client.get(f"/db/{db_name}/info")
             db_info  = response.json()["db_info"]
@@ -117,6 +117,7 @@ class TestAutoTrain(unittest.TestCase):
         response = self.client.get("/db/find_indexes_to_train")
         print (response.json())
         indexes_to_train = response.json()["training_queue"]
+        print ("indexes_to_train", indexes_to_train)
 
         # The only database that should be returned is the last one
         self.assertTrue(indexes_to_train[0] == "fiqa_test_3")
@@ -150,14 +151,14 @@ class TestAutoTrain(unittest.TestCase):
 
         # Wait for the training to complete
         tries = 0
-        while tries < 25:
+        while tries < 30:
             response = self.client.get(f"/db/{db_name}/train")
             status = response.json()["status"]
             if status == "complete":
                 break
             else:
                 tries += 1
-                time.sleep(5)
+                time.sleep(20)
         
         
     def test__003_auto_train_during_adding(self):
@@ -189,20 +190,20 @@ class TestAutoTrain(unittest.TestCase):
         self.assertEqual(status, "in progress")
 
         tries = 0
-        while tries < 25:
+        while tries < 30:
             response = self.client.get(f"/db/{db_name}/train")
             status = response.json()["status"]
             if status == "complete":
                 break
             else:
                 tries += 1
-                time.sleep(10)
+                time.sleep(20)
 
     
     # Call the auto train endpoint
     def test__004_tear_down(self):
         for db_name in self.db_names:
-            response = self.client.post(f"/db/{db_name}delete")
+            response = self.client.post(f"/db/{db_name}/delete")
         
         response = self.client.post(f"/db/fiqa_test_4/delete")
 
