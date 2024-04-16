@@ -1,15 +1,8 @@
 from fastapi.testclient import TestClient # requires httpx
-import sys
-import os
-import numpy as np
 import time
 import unittest
-#import json
 
 from helpers import fiqa_test_data
-
-FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from api.fastapi import app
 
@@ -161,51 +154,9 @@ class TestAutoTrain(unittest.TestCase):
         indexes_to_train = response.json()["training_queue"]
 
         self.assertTrue(len(indexes_to_train) == 0)
-        
-        
-    """def test__003_auto_train_during_adding(self):
-
-        ### Add some more vectors to the first database (to hit 50,000 vectors where it will automatically train)
-        db_name = "fiqa_test_1"
-        vectors = self.vectors
-        text = self.text
-        #vectors.extend(vectors)
-        #text.extend(text)
-
-        response = self.client.post("/db/create", json={"name": db_name})
-        assert response.status_code == 200
-
-        # Add vectors to the database
-        batch_size = 1000
-        for i in range(0, len(vectors), batch_size):
-            data = []
-            for j in range(i, i+batch_size):
-                data.append((vectors[j], {"text": text[j]}))
-            response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
-        self.assertTrue(response.status_code == 200)
-
-
-        # Check the training status
-        response = self.client.get(f"/db/{db_name}/train")
-        status = response.json()["status"]
-
-        self.assertEqual(status, "in progress")
-
-        tries = 0
-        while tries < 30:
-            response = self.client.get(f"/db/{db_name}/train")
-            status = response.json()["status"]
-            if status == "complete":
-                break
-            else:
-                tries += 1
-                time.sleep(20)"""
 
     
     # Call the auto train endpoint
     def test__004_tear_down(self):
         for db_name in self.db_names:
             response = self.client.post(f"/db/{db_name}/delete")
-
-if __name__ == "__main__":
-    unittest.main()
