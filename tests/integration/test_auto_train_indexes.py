@@ -48,25 +48,6 @@ class TestAutoTrain(unittest.TestCase):
             db_info  = response.json()["db_info"]
             print ("db_info", db_info)
 
-        # Add more vectors to the last database to get over 50,000 vectors
-        db_name = "fiqa_test_2"
-        # Double the size of the vectors and text lists
-        #vectors.extend(vectors)
-        #text.extend(text)
-
-        # Add vectors to the database
-        """batch_size = 1000
-        for i in range(0, 15000, batch_size):
-            data = []
-            for j in range(i, i+batch_size):
-                data.append((vectors[j], {"text": text[j]}))
-            response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
-        self.assertTrue(response.status_code == 200)
-
-        response = self.client.get(f"/db/{db_name}/info")
-        db_info = response.json()["db_info"]
-        print ("db_info", db_info)"""
-
 
     def test__002_auto_train(self):
 
