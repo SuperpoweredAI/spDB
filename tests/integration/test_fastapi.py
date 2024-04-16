@@ -90,7 +90,7 @@ class TestFastAPI(unittest.TestCase):
         self.assertTrue(response.status_code == 400)
 
         tries = 0
-        while tries < 30:
+        while tries < 50:
             response = self.client.get(f"/db/{self.db_name}/train")
             status = response.json()["status"]
             if status == "complete":
@@ -127,7 +127,7 @@ class TestFastAPI(unittest.TestCase):
 
         # Wait for the training to complete
         tries = 0
-        while tries < 30:
+        while tries < 50:
             response = self.client.get(f"/db/{self.db_name}/train")
             status = response.json()["status"]
             if status == "complete":

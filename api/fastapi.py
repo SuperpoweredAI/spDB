@@ -31,6 +31,8 @@ databases = {name: load_db(name) for name in db_names}
 operations = {}
 unassigned_vectors = {}
 training_queue = []
+initial_training_queue = []
+initial_training_queue_lock = threading.Lock()
 vectors_to_remove = {}
 
 # Define request and response models
@@ -125,8 +127,28 @@ def check_for_initial_training(db_name: str):
     db = databases[db_name]
     needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
     if needs_training:
-        print ("starting training")
+        print ("starting training inside check_for_initial_training")
         train_db(db_name)
+
+
+def train_initial_indexes():
+    # This function will be called in a separate thread to train the indexes that need to be trained
+    while len(initial_training_queue) > 0:
+        db_name = initial_training_queue[0]
+        
+        if db_name not in operations:
+            print ("training ", db_name)
+            try:
+                # We can't have this throw an error, so we wrap it in a try/except
+                success = train_db(db_name)
+            except:
+                # TODO: Alert us that something went wrong
+                pass
+            with initial_training_queue_lock:
+                initial_training_queue.remove(db_name)
+        else:
+            print ("training already in progress for ", db_name)
+            initial_training_queue.remove(db_name)
 
 
 @app.post("/db/{db_name}/add")
@@ -151,9 +173,20 @@ def add_vectors(db_name: str, data: AddInput):
             unassigned_vectors[db_name] = []
         unassigned_vectors[db_name].extend(ids)
     
-    
-    thread = threading.Thread(target=check_for_initial_training, kwargs={"db_name": db_name})
-    thread.start()
+    needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
+    if needs_training:
+        with initial_training_queue_lock:
+            # get the length of the queue before adding the db_name
+            len_training_queue = len(initial_training_queue)
+            # Make sure the db_name is not already in the queue
+            if (db_name not in initial_training_queue):
+                initial_training_queue.append(db_name)
+        
+        # Do this outside the thread lock to avoid locking the training queue for too long
+        if (len_training_queue == 0):
+            # If there are no indexes already in the queue, start training the indexes in a new thread
+            thread = threading.Thread(target=train_initial_indexes)
+            thread.start()
     
     return {"message": "Vectors and text added successfully"}
 
@@ -257,7 +290,6 @@ def train_db(db_name: str):
                 # This is a safeguard to make sure we don't get stuck in an infinite loop
                 # TODO: Alert us that something went wrong
                 break
-        
     
     # When the operation is complete, update the operation status to 'complete', set the faiss index
     # to the new faiss index, and remove the new faiss index
@@ -383,17 +415,29 @@ def find_indexes_to_train():
 
     for db_name in databases:
         db = databases[db_name]
+        with initial_training_queue_lock:
+            # If this db is in the initial training queue, skip it
+            if db_name in initial_training_queue:
+                continue
         needs_training = utils.check_needs_training(
             db_name, db.num_vectors, operations, db.trained_index_coverage_ratio)
         if needs_training:
             training_queue.append(db_name)
     
-    # Start training the indexes in a new thread
-    thread = threading.Thread(target=train_indexes)
-    thread.start()
+    # Start training the indexes in a new thread, if there are any
+    if (len(training_queue) > 0):
+        thread = threading.Thread(target=train_indexes)
+        thread.start()
 
     return {"training_queue": training_queue}
     
+
+
+@app.get("/db/get_initial_training_queue")
+def get_initial_training_queue():
+    # Loop through all of the dbs and find the ones that need to be trained
+
+    return {"initial_training_queue": initial_training_queue}
 
 
 """

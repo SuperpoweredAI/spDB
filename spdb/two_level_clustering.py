@@ -141,7 +141,7 @@ def handle_pre_transforms(index: faiss.IndexPreTransform, vector_dimension: int,
     return faiss.downcast_index(index.index), all_vector_transforms
 
 
-def train_ivf_index_with_two_level_clustering(index: faiss.IndexPreTransform, num_total_clusters: int,max_memory_usage: int, vector_dimension: int, uncompressed_vectors_lmdb_path: str, lmdb_lock) -> faiss.IndexPreTransform:
+def train_ivf_index_with_two_level_clustering(index: faiss.IndexPreTransform, num_total_clusters: int, max_memory_usage: int, vector_dimension: int, uncompressed_vectors_lmdb_path: str, lmdb_lock) -> faiss.IndexPreTransform:
     """
     Applies 2-level clustering to an index_ivf embedded in an index.
     """

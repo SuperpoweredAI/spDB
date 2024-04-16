@@ -216,7 +216,7 @@ class spDB:
         if add_to_new_faiss_index:
             self.new_faiss_index.add_with_ids(vectors, ids)
         
-        logger.info(f'Added vectors and text to LMDB and faiss index')
+        #logger.info(f'Added vectors and text to LMDB and faiss index')
 
         self._vector_dimension = vectors.shape[1]
         self.update_training_data_stats(ids_added=ids)
@@ -475,10 +475,10 @@ class spDB:
         with self._faiss_lock:
             if self.faiss_index is not None:
                 faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
-                logger.info(f'Saving faiss index to disk at {faiss_index_path}')
+                #logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
-                logger.info(f'faiss index saved to disk at {faiss_index_path}')
+                #logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
             self.save_config_params()
 
