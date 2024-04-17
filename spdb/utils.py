@@ -168,7 +168,7 @@ def check_needs_initial_training(db_name: str, num_vectors: int, faiss_index, op
     
     # If there are fewer than 50k vectors, we don't need to train
     if num_vectors < params.num_vector_training_cutoff:
-        print ("num vectors is less than 50k", num_vectors)
+        #print ("num vectors is less than 50k", num_vectors)
         return False
     
     # If there is already an index, we don't need to train
