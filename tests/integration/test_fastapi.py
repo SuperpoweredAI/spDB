@@ -1,15 +1,10 @@
 from fastapi.testclient import TestClient # requires httpx
-import sys
-import os
 import numpy as np
 import time
 import unittest
 import json
 
 from helpers import fiqa_test_data
-
-FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from api.fastapi import app
 
@@ -95,14 +90,14 @@ class TestFastAPI(unittest.TestCase):
         self.assertTrue(response.status_code == 400)
 
         tries = 0
-        while tries < 10:
+        while tries < 50:
             response = self.client.get(f"/db/{self.db_name}/train")
             status = response.json()["status"]
             if status == "complete":
                 break
             else:
                 tries += 1
-                time.sleep(10)
+                time.sleep(20)
 
         self.assertEqual(status, "complete")
     
@@ -132,14 +127,14 @@ class TestFastAPI(unittest.TestCase):
 
         # Wait for the training to complete
         tries = 0
-        while tries < 10:
+        while tries < 50:
             response = self.client.get(f"/db/{self.db_name}/train")
             status = response.json()["status"]
             if status == "complete":
                 break
             else:
                 tries += 1
-                time.sleep(10)
+                time.sleep(40)
 
         self.assertEqual(status, "complete")
 

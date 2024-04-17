@@ -1,5 +1,5 @@
 import numpy as np
-import os
+from . import params
 
 def get_num_clusters(num_vectors: int) -> int:
     # Get the number of clusters to use for the IVF index, based on the number of vectors
@@ -164,4 +164,61 @@ def calculate_cosine_similarity(query_vector: np.ndarray, comparison_vectors: np
     return all_cosine_similarity
 
 
-#def get_ids_
+def check_needs_initial_training(db_name: str, num_vectors: int, faiss_index, operations: dict) -> bool:
+    
+    # If there are fewer than 50k vectors, we don't need to train
+    if num_vectors < params.num_vector_training_cutoff:
+        #print ("num vectors is less than 50k", num_vectors)
+        return False
+    
+    # If there is already an index, we don't need to train
+    is_flat_index = check_is_flat_index(faiss_index)
+    if not is_flat_index:
+        print ("index already trained", type(faiss_index))
+        return False
+
+    # Check if there is a training operation already in progress for this database
+    if db_name in operations:
+        if operations[db_name] == "in progress" or operations[db_name] == "training":
+            print ("training already in progress", operations[db_name])
+            return False
+    
+    return True
+
+
+
+def check_needs_training(db_name: str, num_vectors: int, operations: dict, index_coverage_ratio: float) -> bool:
+    
+    # If there are fewer than 50k vectors, we don't need to train
+    if num_vectors < params.num_vector_training_cutoff:
+        print ("num vectors is less than 50k", num_vectors)
+        return False
+    
+    if index_coverage_ratio > params.trained_index_coverage_ratio_cutoff:
+        print ("index coverage ratio is greater than 0.5", index_coverage_ratio)
+        return False
+
+    # Check if there is a training operation already in progress for this database
+    if db_name in operations:
+        if operations[db_name] == "in progress" or operations[db_name] == "training":
+            print ("training already in progress", operations[db_name])
+            return False
+    
+    return True
+
+
+def get_training_params(max_memory_usage: int, vector_dimension: int, num_vectors: int) -> dict:
+    
+    use_two_level_clustering = is_two_level_clustering_optimal(max_memory_usage, vector_dimension, num_vectors)
+    pca_dimension = params.pca_dimension
+    omit_opq = params.omit_opq
+    opq_dimension = params.opq_dimension
+    compressed_vector_bytes = params.compressed_vector_bytes
+
+    return {
+        "use_two_level_clustering": use_two_level_clustering,
+        "pca_dimension": pca_dimension,
+        "omit_opq": omit_opq,
+        "opq_dimension": opq_dimension,
+        "compressed_vector_bytes": compressed_vector_bytes,
+    }

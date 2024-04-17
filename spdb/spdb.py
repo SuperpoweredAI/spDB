@@ -3,10 +3,8 @@ import logging
 import numpy as np
 import json
 import os
-import pickle
 import shutil
 import threading
-import time
 from faiss.contrib.exhaustive_search import knn
 
 from . import utils
@@ -100,6 +98,11 @@ class spDB:
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]
 
+        self.max_trained_id = config_params["max_trained_id"]
+        self.num_vectors_trained_on = config_params["num_vectors_trained_on"]
+        self.num_new_vectors = config_params["num_new_vectors"]
+        self.num_trained_vectors_removed = config_params["num_trained_vectors_removed"]
+
         # set the lmdb path
         self._lmdb_path = os.path.join(self.save_path, 'lmdb')
         self._lmdb_uncompressed_vectors_path = os.path.join(self.lmdb_path, 'uncompressed_vectors')
@@ -154,19 +157,6 @@ class spDB:
         return utils.calculate_trained_index_coverage_ratio(
             self.num_vectors_trained_on, self.num_new_vectors, self.num_trained_vectors_removed)
 
-        """if not os.path.exists(os.path.join(self.save_path, 'trained_index_vector_ids.pickle')):
-            return 0
-
-        # Get the current ids in the lmdb index
-        with self._lmdb_lock:
-            lmdb_index_ids = lmdb_utils.get_lmdb_index_ids(self.lmdb_uncompressed_vectors_path)
-
-        # Load in the pickled index ids
-        with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'rb') as f:
-            saved_lmdb_index_ids = pickle.load(f)
-        
-        return utils.calculate_trained_index_coverage_ratio(lmdb_index_ids, saved_lmdb_index_ids)"""
-
     def add(self, data: list[tuple[np.ndarray, dict]], add_to_new_faiss_index: bool = False) -> list:
         """
         Add vectors and their corresponding text to the database.
@@ -197,7 +187,6 @@ class spDB:
             faiss_index = faiss.IndexIDMap(index)
             with self._faiss_lock:
                 self.faiss_index = faiss_index
-        
         ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
@@ -227,7 +216,7 @@ class spDB:
         if add_to_new_faiss_index:
             self.new_faiss_index.add_with_ids(vectors, ids)
         
-        logger.info(f'Added vectors and text to LMDB and faiss index')
+        #logger.info(f'Added vectors and text to LMDB and faiss index')
 
         self._vector_dimension = vectors.shape[1]
         self.update_training_data_stats(ids_added=ids)
@@ -332,10 +321,6 @@ class spDB:
 
         logger.info('Setting the new faiss index')
         self.new_faiss_index = new_faiss_index
-        
-        # Save the index ids to a pickle file
-        #with open(os.path.join(self.save_path, 'trained_index_vector_ids.pickle'), 'wb') as f:
-        #    pickle.dump(lmdb_index_ids, f)
 
         self.save()
     
@@ -372,6 +357,8 @@ class spDB:
         :return: two lists containing the reranked text and their corresponding IDs, respectively.
         """
 
+        final_top_k = min(final_top_k, self.num_vectors)
+
         # Check if the query vector is a list, and if so, convert it to a numpy array
         if isinstance(query_vector, list):
             query_vector = np.array(query_vector, dtype=np.float32)
@@ -403,7 +390,7 @@ class spDB:
                 cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
                 
                 return {
-                    "ids": I[0],
+                    "ids": I[0].tolist(),
                     'metadata': metadata,
                     'cosine_similarity': cosine_similarity
                 }
@@ -488,10 +475,10 @@ class spDB:
         with self._faiss_lock:
             if self.faiss_index is not None:
                 faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
-                logger.info(f'Saving faiss index to disk at {faiss_index_path}')
+                #logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
-                logger.info(f'faiss index saved to disk at {faiss_index_path}')
+                #logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
             self.save_config_params()
 
@@ -506,7 +493,11 @@ class spDB:
         config_params = {
             "max_id": self.max_id,
             "vector_dimension": self.vector_dimension,
-            "max_memory_usage": self.max_memory_usage
+            "max_memory_usage": self.max_memory_usage,
+            "max_trained_id": self.max_trained_id,
+            "num_vectors_trained_on": self.num_vectors_trained_on,
+            "num_trained_vectors_removed": self.num_trained_vectors_removed,
+            "num_new_vectors": self.num_new_vectors,
         }
         config_file_path = os.path.join(self.save_path, 'config.json')
         with open(config_file_path, 'w') as f:
