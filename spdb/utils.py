@@ -124,7 +124,7 @@ def get_default_faiss_params(vector_dimension: int) -> dict:
         return {
             "pca_dimension": 512,
             "opq_dimension": 256,
-            "compressed_vector_bytes": 64,
+            "compressed_vector_bytes": 32,
         }
     else:
         return {

@@ -67,6 +67,7 @@ class spDB:
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
         self.faiss_index = None
+        self.training_params = None
 
         self.max_trained_id = 0
         self.num_vectors_trained_on = 0
@@ -102,6 +103,7 @@ class spDB:
         self.num_vectors_trained_on = config_params["num_vectors_trained_on"]
         self.num_new_vectors = config_params["num_new_vectors"]
         self.num_trained_vectors_removed = config_params["num_trained_vectors_removed"]
+        self.training_params = config_params["training_params"]
 
         # set the lmdb path
         self._lmdb_path = os.path.join(self.save_path, 'lmdb')
@@ -246,6 +248,14 @@ class spDB:
             opq_dimension = default_params['opq_dimension']
         if compressed_vector_bytes is None:
             compressed_vector_bytes = default_params['compressed_vector_bytes']
+        
+        self.training_params = {
+            'pca_dimension': pca_dimension,
+            'opq_dimension': opq_dimension,
+            'compressed_vector_bytes': compressed_vector_bytes,
+            'omit_opq': omit_opq,
+            'num_clusters': num_clusters
+        }
 
         # log the training parameters individually
         logger.info(f'pca_dimension: {pca_dimension}')
@@ -498,6 +508,7 @@ class spDB:
             "num_vectors_trained_on": self.num_vectors_trained_on,
             "num_trained_vectors_removed": self.num_trained_vectors_removed,
             "num_new_vectors": self.num_new_vectors,
+            "training_params": self.training_params
         }
         config_file_path = os.path.join(self.save_path, 'config.json')
         with open(config_file_path, 'w') as f:
