@@ -30,12 +30,11 @@ class TestAutoTrain(unittest.TestCase):
         self.pca_dimension = 256
         self.opq_dimension = 128
         self.compressed_vector_bytes = 32
-        self.omit_opq = True
+        self.omit_opq = False
         self.query_k = 500
         self.gt_k = 50
 
         vectors, text, _, _ = fiqa_test_data()
-        print (len(vectors), len(text))
         self.vectors = vectors.tolist()
         self.text = text
 
@@ -74,6 +73,10 @@ class TestAutoTrain(unittest.TestCase):
         cache_keys = response.json()["cache_keys"]
         self.assertTrue(len(cache_keys) == 2)
 
+        response = self.client.get("/db/view_cache")
+        current_memory_usage = response.json()["current_memory_usage"]
+        print ("current_memory_usage", current_memory_usage)
+
         db_name = self.db_names[0]
     
 
@@ -81,13 +84,7 @@ class TestAutoTrain(unittest.TestCase):
 
         # Train the first db, then check the info of the db
         db_name = self.db_names[0]
-        response = self.client.post(f"/db/{db_name}/train", json={
-            "use_two_level_clustering": True,
-            "pca_dimension": self.pca_dimension,
-            "opq_dimension": self.opq_dimension,
-            "compressed_vector_bytes": self.compressed_vector_bytes,
-            "omit_opq": self.omit_opq
-        })
+        response = self.client.post(f"/db/{db_name}/train")
 
         # Wait for the training to finish
         for i in range(20):
@@ -106,12 +103,11 @@ class TestAutoTrain(unittest.TestCase):
 
         # View the cache
         response = self.client.get("/db/view_cache")
-        print (response.json())
         current_memory_usage = response.json()["current_memory_usage"]
-
-        # Make sure the memory usage is less than 10MB
-        # If it's higher, then the cache memory wouldn't have updated the after training
         print ("current_memory_usage", current_memory_usage)
+
+        # Make sure the memory usage is less than 100MB
+        # If it's higher, then the cache memory wouldn't have updated the after training
         self.assertTrue(current_memory_usage < (100 * 1024 * 1024))
     
 
@@ -136,29 +132,92 @@ class TestAutoTrain(unittest.TestCase):
         response = self.client.get("/db/view_cache")
         # The fiqa_test_1 db should have been removed from the cache
         cache_keys = response.json()["cache_keys"]
-        print ("cache_keys", cache_keys)
         self.assertTrue(len(cache_keys) == 3)
         # Make sure the fiqa_test_2 db is not in the cache
         self.assertTrue("fiqa_test_2" not in cache_keys)
     
+
     def test__004_remove_from_cache(self):
         # Just testing removing a database from the cache
         
-        db_name = self.db_names[0]
+        db_name = "fiqa_test_1"
         response = self.client.post(f"/db/{db_name}/remove_from_cache")
 
         # View the cache
         response = self.client.get("/db/view_cache")
-        print (response.json())
         cache_keys = response.json()["cache_keys"]
         self.assertTrue(len(cache_keys) == 2)
-        print (cache_keys)
-        # Make sure the fiqa_test_2 db is not in the cache
+        # Make sure the fiqa_test_1 db is not in the cache
         self.assertTrue("fiqa_test_1" not in cache_keys)
+    
+
+    def test__005_remove_from_cache_while_training(self):
+        # Make sure the DB is not removed from the cache while training
+
+        # Initialize the training operation for the fiqa_test_3 db
+        db_name = "fiqa_test_3"
+        response = self.client.post(f"/db/{db_name}/train")
+
+        # Sleep for enough time for the training to begin
+        time.sleep(5)
+
+        # Make sure fiqa_test_3 is in the cache now
+        response = self.client.get("/db/view_cache")
+        cache_keys = response.json()["cache_keys"]
+        self.assertTrue("fiqa_test_3" in cache_keys)
+
+        # Add 1000 vectors to the 4th db. It was not previously in the cache, but it should be added now
+        # We need to add the vectors to this db since it's still a flat index, which will increase memory usage
+        # enough to trigger a db to be removed from the cache
+        db_name = "fiqa_test_4"
+        batch_size = 1000
+        data = []
+        for j in range(0, batch_size):
+            data.append((self.vectors[j], {"text": self.text[j]}))
+        response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
+        self.assertTrue(response.status_code == 200)
+        
+        # View the cache. fiqa_test_4 and fiqa_test_3 should be in the cache
+        response = self.client.get("/db/view_cache")
+        cache_keys = response.json()["cache_keys"]
+        self.assertTrue("fiqa_test_4" in cache_keys)
+        self.assertTrue("fiqa_test_3" in cache_keys)
 
 
-    def test__005_tear_down(self):
+        # Add 1000 vectors to the 2nd db. It was not previously in the cache, but it should be added now
+        db_name = "fiqa_test_2"
+        batch_size = 1000
+        data = []
+        for j in range(0, batch_size):
+            data.append((self.vectors[j], {"text": self.text[j]}))
+        response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
+        self.assertTrue(response.status_code == 200)
+        
+        # View the cache. fiqa_test_4 should not be in the cache, even though it was more recently used
+        # than fiqa_test_3. This is because fiqa_test_3 is currently training
+        response = self.client.get("/db/view_cache")
+        cache_keys = response.json()["cache_keys"]
+        self.assertTrue("fiqa_test_2" in cache_keys)
+        self.assertTrue("fiqa_test_4" not in cache_keys)
+
+
+        # Wait for the training to finish
+        db_name = "fiqa_test_3"
+        for i in range(20):
+            response = self.client.get(f"/db/{db_name}/train")
+            status = response.json()["status"]
+            if status == "complete":
+                break
+            time.sleep(10)
+        
+        print ("training status", status)
+
+
+    def test__006_tear_down(self):
         for db_name in self.db_names:
+            response = self.client.post(f"/db/{db_name}/delete")
+        
+        for db_name in ["fiqa_test_3", "fiqa_test_4"]:
             response = self.client.post(f"/db/{db_name}/delete")
 
 if __name__ == "__main__":

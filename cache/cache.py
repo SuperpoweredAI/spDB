@@ -1,4 +1,3 @@
-import sys
 from collections import OrderedDict
 from spdb.spdb import load_db
 from spdb.utils import check_is_flat_index
@@ -11,14 +10,11 @@ class LRUCache:
 
     def update_memory_usage(self):
         memory_usage = 0
-        for key, value in self.cache.items():
+        for _, value in self.cache.items():
             memory_usage += estimate_memory_usage(value)
-            print ("key", key)
-            print ("memory_usage", memory_usage)
         self.current_memory_usage = memory_usage
-        #self.current_memory_usage = sum(estimate_memory_usage(value) for value in self.cache.values())
 
-    def get(self, key, check_memory_usage=False):
+    def get(self, key, check_memory_usage=False, operations={}):
         """
         Method to get the value of a key in the cache. If the key is not in the cache, it will raise a KeyError.
         - If check_memory_usage is True, it will check if the current memory usage is greater than the max memory usage and evict the least recently used key until the memory usage is less than the max memory usage.
@@ -36,22 +32,50 @@ class LRUCache:
         if check_memory_usage:
             self.update_memory_usage()
             while (self.current_memory_usage > self.max_memory_usage) and (len(self.cache) > 0):
-                _, evicted_value = self.cache.popitem(last=False)
+
+                # Loop through the cache and find the first key that isn't in the operations list
+                first_key = None
+                keys = list(self.cache.keys())
+                # Reverse the keys
+                print ("keys", keys)
+                for item in keys:
+                    print (item)
+                    if (item not in operations) or (item in operations and (operations[item] == "complete" or operations[item] == "untrained")):
+                        first_key = item
+                        break
+                if first_key is None:
+                    break
+
+                evicted_value = self.cache.pop(first_key)
                 self.current_memory_usage -= estimate_memory_usage(evicted_value)
         return self.cache[key]
 
-    def put(self, key, value):
+    def put(self, key, value, operations={}):
         """
         Only needed when we add a new database.
         """
         if key in self.cache:
             self.cache.move_to_end(key)
         else:
+
             self.update_memory_usage() # put only called in non-latency sensitive operations, so we can always check memory usage here
             index_memory_usage = estimate_memory_usage(value)
             while (self.current_memory_usage + index_memory_usage > self.max_memory_usage) and (len(self.cache) > 0):
-                _, evicted_value = self.cache.popitem(last=False)
+                # Loop through the cache and find the first key that isn't in the operations list
+                first_key = None
+                keys = list(self.cache.keys())
+                # Reverse the keys
+                print ("keys", keys)
+                for key in keys:
+                    if (key not in operations) or (key in operations and (operations[key] == "complete" or operations[key] == "untrained")):
+                        first_key = key
+                        break
+                if first_key is None:
+                    break
+
+                evicted_value = self.cache.pop(first_key)
                 self.current_memory_usage -= estimate_memory_usage(evicted_value)
+
             self.cache[key] = value
             self.current_memory_usage += index_memory_usage
 
@@ -67,7 +91,7 @@ class LRUCache:
 def estimate_memory_usage(db):
     # Get an estimate of the memory usage based off the number of vectors, the type of index,
     # the vector dimension, and the params used to train the index (if trained)
-    
+
     if db.faiss_index is None:
         return 48 # This is the memory usage of an empty database
 
@@ -81,7 +105,6 @@ def estimate_memory_usage(db):
         return memory_usage
 
     # Case where the index is a trained index
-    print (db.training_params)
     compressed_vector_bytes = db.training_params["compressed_vector_bytes"]
 
     ## TODO: refine this a bit more. These are very good estimates, but it would be better to 

@@ -80,7 +80,7 @@ def read_root():
 @app.get("/db/{db_name}/info")
 def get_info(db_name: str):
     # Return a json object with the class attributes
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
     
@@ -128,7 +128,7 @@ def create_db(create_db_input: CreateDBInput):
 
 def check_for_initial_training(db_name: str):
     # Check to see if we need to train the database. This will be called during the add function
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         # Not sure what needs to happen here. This really should never happen
         pass
@@ -160,7 +160,7 @@ def train_initial_indexes():
 
 @app.post("/db/{db_name}/add")
 def add_vectors(db_name: str, data: AddInput):
-    db = databases.get(db_name, check_memory_usage=True)
+    db = databases.get(db_name, check_memory_usage=True, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
 
@@ -214,10 +214,12 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
             vectors_to_remove[db_name] = []
         vectors_to_remove[db_name].extend(ids.ids)
 
-    if db_name not in databases:
-        raise HTTPException(status_code=404, detail="Database not found")
+    #if db_name not in databases:
+    #    raise HTTPException(status_code=404, detail="Database not found")
     
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
+    if db == None:
+        raise HTTPException(status_code=404, detail="Database not found")
     db.remove(vector_ids=ids.ids, remove_from_lmdb=remove_from_lmdb)
 
     return {"message": f"{len(ids.ids)} vectors removed successfully"}
@@ -227,7 +229,7 @@ def cleanup_training(db_name: str):
 
     # One last check to make sure there are no unassigned vectors
     # Make sure the db name is in the list of databases (this is a safeguard in case the db was deleted)
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         return
     
@@ -254,7 +256,7 @@ def cleanup_training(db_name: str):
             
 
 def train_db(db_name: str):
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
     operations[db_name] = "in progress"
@@ -321,7 +323,7 @@ def train_db(db_name: str):
 
 @app.post("/db/{db_name}/train")
 def start_train_db(db_name: str):
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
     #if db_name not in databases:
@@ -350,7 +352,7 @@ def get_operation_status(db_name: str):
 
 @app.post("/db/{db_name}/query")
 def query(db_name: str, query_input: QueryInput):
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
 
@@ -365,7 +367,7 @@ def query(db_name: str, query_input: QueryInput):
 
 @app.post("/db/{db_name}/save")
 def save_db(db_name: str):
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
     db.save()
@@ -386,7 +388,7 @@ def reload_db(db_name: str):
 
 @app.post("/db/{db_name}/delete")
 def delete_db(db_name: str):
-    db = databases.get(db_name)
+    db = databases.get(db_name, operations=operations)
     if (db == None):
         raise HTTPException(status_code=404, detail="Database not found")
     db.delete()
@@ -430,7 +432,7 @@ def find_indexes_to_train():
         return {"training_queue": training_queue}
 
     for db_name in db_names:
-        db = databases.get(db_name)
+        db = databases.get(db_name, operations=operations)
         with initial_training_queue_lock:
             # If this db is in the initial training queue, skip it
             if db_name in initial_training_queue:
