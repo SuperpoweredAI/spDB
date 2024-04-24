@@ -37,15 +37,6 @@ class TestAutoTrain(unittest.TestCase):
         vectors, text, _, _ = fiqa_test_data()
         self.vectors = vectors.tolist()
         self.text = text
-
-        # Specify the number of random vectors (N) and the dimensionality (D)
-        #N = 30000  # Number of random vectors
-        #D = 2048  # Dimensionality of each vector
-
-        # Generate N random vectors with D dimensions and random text strings
-        #random_vectors, random_text = generate_random_vectors_with_text(N, D)
-        #self.vectors = random_vectors.tolist()
-        #self.text = random_text
     
 
     def test__001_setup_dbs(self):
@@ -78,6 +69,11 @@ class TestAutoTrain(unittest.TestCase):
         print ("current_memory_usage", current_memory_usage)
 
         db_name = self.db_names[0]
+
+        # This is the memory usage needed for the tests to work properly
+        new_max_memory_usage = 200 * 1024 * 1024
+        response = self.client.post("/db/update_max_memory_usage", json={"max_memory_usage": new_max_memory_usage})
+        print ("response", response.json())
     
 
     def test__002_train(self):
@@ -212,8 +208,54 @@ class TestAutoTrain(unittest.TestCase):
         
         print ("training status", status)
 
+    
+    def test__006_update_max_memory_usage(self):
+        # Update the max memory usage of the cache
 
-    def test__006_tear_down(self):
+        new_max_memory_usage = 400 * 1024 * 1024
+        response = self.client.post("/db/update_max_memory_usage", json={"max_memory_usage": new_max_memory_usage})
+        self.assertTrue(response.status_code == 200)
+
+        # View the cache
+        response = self.client.get("/db/view_cache")
+        current_memory_usage = response.json()["current_memory_usage"]
+        self.assertTrue(current_memory_usage < new_max_memory_usage)
+
+        # Add more vectors to the 4th db. This will get the memory usage above the original 200MB
+        # We need to make sure the cache keys stay the same
+        db_name = "fiqa_test_4"
+        batch_size = 1000
+        for i in range(0, 15000, batch_size):
+            data = []
+            for j in range(i, i+batch_size):
+                data.append((self.vectors[j], {"text": self.text[j]}))
+            response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
+        self.assertTrue(response.status_code == 200)
+
+        # View the cache
+        response = self.client.get("/db/view_cache")
+        current_memory_usage = response.json()["current_memory_usage"]
+        print ("current_memory_usage", current_memory_usage)
+        cache_keys = response.json()["cache_keys"]
+        print ("cache_keys test 006", cache_keys)
+        self.assertTrue(len(cache_keys) == 3)
+
+        # Set the memory usage back to 200MB
+        new_max_memory_usage = 200 * 1024 * 1024
+        response = self.client.post("/db/update_max_memory_usage", json={"max_memory_usage": new_max_memory_usage})
+        print ("response", response.json())
+
+        # View the cache. A db should be removed since the memory usage is above the max memory usage
+        response = self.client.get("/db/view_cache")
+        current_memory_usage = response.json()["current_memory_usage"]
+        print ("current_memory_usage", current_memory_usage)
+        cache_keys = response.json()["cache_keys"]
+        print ("cache_keys test 006", cache_keys)
+        self.assertTrue(len(cache_keys) == 2)
+        self.assertTrue("fiqa_test_2" not in cache_keys)
+
+
+    def test__007_tear_down(self):
         for db_name in self.db_names:
             response = self.client.post(f"/db/{db_name}/delete")
         

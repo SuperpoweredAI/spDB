@@ -23,7 +23,7 @@ app = FastAPI()
 db_path = os.path.join(os.path.expanduser("~"), ".spdb")
 
 # Initialize the Cache class
-databases = LRUCache(max_memory_usage=0.2 * 1024 * 1024 * 1024) # 1 GB
+databases = LRUCache(max_memory_usage=1 * 1024 * 1024 * 1024) # 1 GB
 
 
 operations = {}
@@ -67,6 +67,8 @@ class TrainDBInput(BaseModel):
     compressed_vector_bytes: Optional[int] = None
     omit_opq: Optional[bool] = False
 
+class MaxMemoryInput(BaseModel):
+    max_memory_usage: int
 
 # API routes
 @app.get("/health")
@@ -474,6 +476,15 @@ def view_cache():
 def remove_from_cache(db_name: str):
     databases.remove(db_name)
     return {"message": "Database removed from cache"}
+
+
+@app.post("/db/update_max_memory_usage")
+def update_max_memory_usage(max_memory_usage: MaxMemoryInput):
+    print ("max_memory_usage inside fastapi", max_memory_usage.max_memory_usage)
+    # Conver the max memory usage to an integer
+    #max_memory_usage = int(max_memory_usage)
+    databases.update_max_memory_usage(max_memory_usage = max_memory_usage.max_memory_usage, operations=operations)
+    return {"message": "Max memory usage updated successfully"}
 
 """
 Usage

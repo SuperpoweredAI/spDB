@@ -7,6 +7,26 @@ class LRUCache:
         self.max_memory_usage = max_memory_usage
         self.cache = OrderedDict()
         self.current_memory_usage = 0
+    
+    def update_max_memory_usage(self, max_memory_usage, operations={}):
+        print ("max_memory_usage inside cache", max_memory_usage)
+        self.max_memory_usage = max_memory_usage
+        self.update_memory_usage()
+        while (self.current_memory_usage > self.max_memory_usage) and (len(self.cache) > 0):
+
+            # Loop through the cache and find the first key that isn't in the operations list
+            first_key = None
+            keys = list(self.cache.keys())
+            for item in keys:
+                print (item)
+                if (item not in operations) or (item in operations and (operations[item] == "complete" or operations[item] == "untrained")):
+                    first_key = item
+                    break
+            if first_key is None:
+                break
+
+            evicted_value = self.cache.pop(first_key)
+            self.current_memory_usage -= estimate_memory_usage(evicted_value)
 
     def update_memory_usage(self):
         memory_usage = 0
@@ -36,7 +56,6 @@ class LRUCache:
                 # Loop through the cache and find the first key that isn't in the operations list
                 first_key = None
                 keys = list(self.cache.keys())
-                # Reverse the keys
                 print ("keys", keys)
                 for item in keys:
                     print (item)
@@ -64,7 +83,6 @@ class LRUCache:
                 # Loop through the cache and find the first key that isn't in the operations list
                 first_key = None
                 keys = list(self.cache.keys())
-                # Reverse the keys
                 print ("keys", keys)
                 for key in keys:
                     if (key not in operations) or (key in operations and (operations[key] == "complete" or operations[key] == "untrained")):

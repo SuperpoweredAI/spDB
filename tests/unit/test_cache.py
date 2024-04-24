@@ -103,8 +103,6 @@ class TestLRUCache(unittest.TestCase):
         print ("cache after 2nd db", self.cache.cache)
 
         random_vectors = self.random_vectors.tolist()
-        #add_data = [(random_vectors[i], {"text": self.random_text[i]}) for i in range(len(random_vectors))]
-        #db.add(add_data)
         batch_size = 1000
         for i in range(0, len(random_vectors), batch_size):
             data = []
@@ -158,6 +156,13 @@ class TestLRUCache(unittest.TestCase):
         print ("cache_keys", cache_keys)
         self.assertEqual(len(cache_keys), 2)
         self.assertTrue("cache_test_db_2" not in cache_keys)
+    
+
+    def test_004__update_max_cache_memory_usage(self):
+        
+        # Update the max memory usage of the cache
+        self.cache.update_max_memory_usage(300 * 1024 * 1024)
+        self.assertEqual(self.cache.max_memory_usage, 300 * 1024 * 1024)
 
 
     def test_009__tear_down(self):
