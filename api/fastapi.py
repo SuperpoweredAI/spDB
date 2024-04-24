@@ -480,9 +480,6 @@ def remove_from_cache(db_name: str):
 
 @app.post("/db/update_max_memory_usage")
 def update_max_memory_usage(max_memory_usage: MaxMemoryInput):
-    print ("max_memory_usage inside fastapi", max_memory_usage.max_memory_usage)
-    # Conver the max memory usage to an integer
-    #max_memory_usage = int(max_memory_usage)
     databases.update_max_memory_usage(max_memory_usage = max_memory_usage.max_memory_usage, operations=operations)
     return {"message": "Max memory usage updated successfully"}
 

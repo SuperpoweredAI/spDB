@@ -9,7 +9,6 @@ class LRUCache:
         self.current_memory_usage = 0
     
     def update_max_memory_usage(self, max_memory_usage, operations={}):
-        print ("max_memory_usage inside cache", max_memory_usage)
         self.max_memory_usage = max_memory_usage
         self.update_memory_usage()
         while (self.current_memory_usage > self.max_memory_usage) and (len(self.cache) > 0):
