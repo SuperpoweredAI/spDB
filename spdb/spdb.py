@@ -95,6 +95,7 @@ class spDB:
     def _initialize_from_config(self) -> None:
         
         config_params = self.read_config_params()
+        print("config_params", config_params)
         self._vector_dimension = config_params["vector_dimension"]
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]

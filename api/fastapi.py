@@ -146,7 +146,7 @@ def train_initial_indexes():
         db_name = initial_training_queue[0]
         
         if db_name not in operations:
-            print ("training ", db_name)
+            print ("initial training ", db_name)
             try:
                 # We can't have this throw an error, so we wrap it in a try/except
                 success = train_db(db_name)
