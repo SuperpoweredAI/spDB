@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient # requires httpx
 import time
 import unittest
+import sys
+import os
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from helpers import fiqa_test_data
 
@@ -21,7 +26,6 @@ class TestAutoTrain(unittest.TestCase):
         self.gt_k = 50
 
         vectors, text, _, _ = fiqa_test_data()
-        print (len(vectors), len(text))
         self.vectors = vectors.tolist()
         self.text = text
     
@@ -100,6 +104,7 @@ class TestAutoTrain(unittest.TestCase):
         response = self.client.get("/db/get_initial_training_queue")
         print (response.json())
         indexes_to_train = response.json()["initial_training_queue"]
+        print ("indexes_to_train line 107", indexes_to_train)
 
         # There should be 2 databases in the initial training queue
         self.assertTrue(indexes_to_train[1] == "fiqa_test_2")
@@ -117,10 +122,13 @@ class TestAutoTrain(unittest.TestCase):
                 tries += 1
                 time.sleep(20)
         
+        time.sleep (5)
+        
         ### Find indexes to train again ###
         response = self.client.get("/db/get_initial_training_queue")
         print (response.json())
         indexes_to_train = response.json()["initial_training_queue"]
+        print ("indexes_to_train line 129", indexes_to_train)
 
         # The only database that should be returned is the 2nd one, because the first one has already been trained
         self.assertTrue(indexes_to_train[0] == "fiqa_test_2")
@@ -133,11 +141,27 @@ class TestAutoTrain(unittest.TestCase):
         response = self.client.get("/db/find_indexes_to_train")
         print (response.json())
         indexes_to_train = response.json()["training_queue"]
-
+        print ("indexes_to_train", indexes_to_train)
         self.assertTrue(len(indexes_to_train) == 0)
+
+        # Wait for the training to complete
+        tries = 0
+        while tries < 40:
+            response = self.client.get(f"/db/fiqa_test_2/train")
+            status = response.json()["status"]
+            if status == "complete":
+                break
+            else:
+                tries += 1
+                time.sleep(20)
 
     
     # Call the auto train endpoint
     def test__004_tear_down(self):
+        print ("deleting dbs")
+
         for db_name in self.db_names:
             response = self.client.post(f"/db/{db_name}/delete")
+
+if __name__ == "__main__":
+    unittest.main()

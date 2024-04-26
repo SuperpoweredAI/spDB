@@ -3,6 +3,11 @@ import numpy as np
 import time
 import unittest
 import json
+import os
+import sys
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from helpers import fiqa_test_data
 
@@ -219,7 +224,33 @@ class TestFastAPI(unittest.TestCase):
         # The trained index coverage ratio should be 0.5 now
         trained_index_coverage_ratio = db_info["trained_index_coverage_ratio"]
         self.assertEqual(trained_index_coverage_ratio, 0.5)
+    
 
-    def test__009_tear_down(self):
+    def test_009__delete_db_while_training(self):
+        # Begin a training operation, then delete the DB. We need to make sure there is no complete failure
+        # when this happens
+        response = self.client.post(f"/db/{self.db_name}/train")
+        print (response.status_code)
+        #self.assertEqual(response.status_code, 200)
+        time.sleep(5)
+
+        response = self.client.post(f"/db/{self.db_name}/delete")
+
+        # Wait for the training to complete
+        tries = 0
+        while tries < 50:
+            response = self.client.get(f"/db/{self.db_name}/train")
+            status = response.json()["status"]
+            if status == "complete":
+                break
+            else:
+                tries += 1
+                time.sleep(20)
+
+
+    def test__01_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         assert response.status_code == 200
+
+if __name__ == "__main__":
+    unittest.main()
