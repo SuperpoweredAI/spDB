@@ -7,9 +7,9 @@ from typing import List, Optional, Tuple
 import threading
 import json
 import time
+from cache.cache import LRUCache
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(FILE_PATH, '../'))
 
 
 # Install FastAPI and Uvicorn
@@ -21,16 +21,16 @@ app = FastAPI()
 
 # Load all databases located in the ~/.spdb folder into a dictionary
 db_path = os.path.join(os.path.expanduser("~"), ".spdb")
-if not (os.path.exists(db_path)):
-    os.mkdir(db_path)
-db_names = os.listdir(db_path)
 
-# Create a dictionary of databases keyed on name
-databases = {name: load_db(name) for name in db_names}
+# Initialize the Cache class
+databases = LRUCache(max_memory_usage=1 * 1024 * 1024 * 1024) # 1 GB
+
 
 operations = {}
 unassigned_vectors = {}
 training_queue = []
+initial_training_queue = []
+initial_training_queue_lock = threading.Lock()
 vectors_to_remove = {}
 
 # Define request and response models
@@ -67,19 +67,26 @@ class TrainDBInput(BaseModel):
     compressed_vector_bytes: Optional[int] = None
     omit_opq: Optional[bool] = False
 
+class MaxMemoryInput(BaseModel):
+    max_memory_usage: int
 
 # API routes
 @app.get("/health")
 def read_root():
     return {"status": "healthy"}
 
+@app.get("/test")
+def read_root():
+    return {"status": "healthy"}
 
 @app.get("/db/{db_name}/info")
 def get_info(db_name: str):
     # Return a json object with the class attributes
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    db = databases[db_name]
+    
+    # Do we want to put this into the cache if we're just viewing the info?
 
     if db.faiss_index == None:
         n_total = 0
@@ -98,7 +105,7 @@ def get_info(db_name: str):
         "num_vectors_trained_on": db.num_vectors_trained_on,
         "num_new_vectors": db.num_new_vectors,
         "num_trained_vectors_removed": db.num_trained_vectors_removed,
-        "is_flat_index": utils.check_is_flat_index(db.faiss_index),
+        "training_params": db.training_params,
     }
 
     # Turn the object into a string so it can be returned
@@ -109,29 +116,55 @@ def get_info(db_name: str):
 
 @app.post("/db/create")
 def create_db(create_db_input: CreateDBInput):
-    if create_db_input.name in databases:
+    if create_db_input.name in databases.cache:
         raise HTTPException(
             status_code=400, detail="Database with this name already exists")
     db = spDB(name=create_db_input.name, vector_dimension=create_db_input.vector_dimension,
               max_memory_usage=create_db_input.max_memory_usage)
-    databases[create_db_input.name] = db
+
+    # Add this to the cache
+    databases.put(create_db_input.name, db)
+
     return {"message": "Database created successfully"}
 
 
 def check_for_initial_training(db_name: str):
     # Check to see if we need to train the database. This will be called during the add function
-    db = databases[db_name]
+    db = databases.get(db_name, operations=operations)
+    if db == None:
+        # Not sure what needs to happen here. This really should never happen
+        pass
     needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
     if needs_training:
-        print ("starting training")
+        print ("starting training inside check_for_initial_training")
         train_db(db_name)
+
+
+def train_initial_indexes():
+    # This function will be called in a separate thread to train the indexes that need to be trained
+    while len(initial_training_queue) > 0:
+        db_name = initial_training_queue[0]
+        
+        if db_name not in operations:
+            print ("initial training ", db_name)
+            try:
+                # We can't have this throw an error, so we wrap it in a try/except
+                success = train_db(db_name)
+            except:
+                # TODO: Alert us that something went wrong
+                pass
+            with initial_training_queue_lock:
+                initial_training_queue.remove(db_name)
+        else:
+            print ("training already in progress for ", db_name)
+            initial_training_queue.remove(db_name)
 
 
 @app.post("/db/{db_name}/add")
 def add_vectors(db_name: str, data: AddInput):
-    if db_name not in databases:
+    db = databases.get(db_name, check_memory_usage=True, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    db = databases[db_name]
 
     training_status = "untrained"
     if (db_name in operations):
@@ -149,9 +182,20 @@ def add_vectors(db_name: str, data: AddInput):
             unassigned_vectors[db_name] = []
         unassigned_vectors[db_name].extend(ids)
     
-    
-    thread = threading.Thread(target=check_for_initial_training, kwargs={"db_name": db_name})
-    thread.start()
+    needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
+    if needs_training:
+        with initial_training_queue_lock:
+            # get the length of the queue before adding the db_name
+            len_training_queue = len(initial_training_queue)
+            # Make sure the db_name is not already in the queue
+            if (db_name not in initial_training_queue):
+                initial_training_queue.append(db_name)
+        
+        # Do this outside the thread lock to avoid locking the training queue for too long
+        if (len_training_queue == 0):
+            # If there are no indexes already in the queue, start training the indexes in a new thread
+            thread = threading.Thread(target=train_initial_indexes)
+            thread.start()
     
     return {"message": "Vectors and text added successfully"}
 
@@ -172,10 +216,12 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
             vectors_to_remove[db_name] = []
         vectors_to_remove[db_name].extend(ids.ids)
 
-    if db_name not in databases:
-        raise HTTPException(status_code=404, detail="Database not found")
+    #if db_name not in databases:
+    #    raise HTTPException(status_code=404, detail="Database not found")
     
-    db = databases[db_name]
+    db = databases.get(db_name, operations=operations)
+    if db == None:
+        raise HTTPException(status_code=404, detail="Database not found")
     db.remove(vector_ids=ids.ids, remove_from_lmdb=remove_from_lmdb)
 
     return {"message": f"{len(ids.ids)} vectors removed successfully"}
@@ -186,7 +232,10 @@ def cleanup_training(db_name: str):
     print ("Cleaning up training")
 
     # One last check to make sure there are no unassigned vectors
-    db = databases[db_name]
+    # Make sure the db name is in the list of databases (this is a safeguard in case the db was deleted)
+    db = databases.get(db_name, operations=operations)
+    if db == None:
+        return
     
     if (db_name in unassigned_vectors):
 
@@ -211,10 +260,12 @@ def cleanup_training(db_name: str):
             
 
 def train_db(db_name: str):
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
     operations[db_name] = "in progress"
-    db = databases[db_name]
+
+    training_params = utils.get_training_params(db.max_memory_usage, db.vector_dimension, db.num_vectors)
 
     training_params = utils.get_training_params(db.max_memory_usage, db.vector_dimension, db.num_vectors)
 
@@ -253,7 +304,6 @@ def train_db(db_name: str):
                 # This is a safeguard to make sure we don't get stuck in an infinite loop
                 # TODO: Alert us that something went wrong
                 break
-        
     
     # When the operation is complete, update the operation status to 'complete', set the faiss index
     # to the new faiss index, and remove the new faiss index
@@ -267,6 +317,9 @@ def train_db(db_name: str):
     print ("Done saving the new faiss index")
     operations[db_name] = "complete"
 
+    # Update the memory usage after training
+    databases.update_memory_usage()
+
     time.sleep(5)
     # Perform the cleanup operation to make sure all of the vectors have been added to the faiss index
     cleanup_training(db_name)
@@ -276,8 +329,11 @@ def train_db(db_name: str):
 
 @app.post("/db/{db_name}/train")
 def start_train_db(db_name: str):
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
+    #if db_name not in databases:
+    #    raise HTTPException(status_code=404, detail="Database not found")
 
     # Check if this db is already training
     if db_name in operations:
@@ -302,9 +358,10 @@ def get_operation_status(db_name: str):
 
 @app.post("/db/{db_name}/query")
 def query(db_name: str, query_input: QueryInput):
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    db = databases[db_name]
+
     results = db.query(
         query_vector=query_input.query_vector, preliminary_top_k=query_input.preliminary_top_k, final_top_k=query_input.final_top_k
     )
@@ -316,9 +373,9 @@ def query(db_name: str, query_input: QueryInput):
 
 @app.post("/db/{db_name}/save")
 def save_db(db_name: str):
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    db = databases[db_name]
     db.save()
     return {"message": "Database saved successfully"}
 
@@ -337,26 +394,31 @@ def reload_db(db_name: str):
 
 @app.post("/db/{db_name}/delete")
 def delete_db(db_name: str):
-    if db_name not in databases:
+    db = databases.get(db_name, operations=operations)
+    if (db == None):
         raise HTTPException(status_code=404, detail="Database not found")
-    db = databases[db_name]
     db.delete()
-    del databases[db_name]
+    # Remove the db from the cache
+    databases.remove(db_name)
+    
+    # If this db was in the operations dictionary, remove it
+    if db_name in operations:
+        del operations[db_name]
     return {"message": "Database deleted successfully"}
 
 
 def train_indexes():
-    print ("training_queue inside train indexes ", training_queue)
 
     for db_name in training_queue:
         if db_name not in operations or (db_name in operations and operations[db_name] == "complete"):
             print ("training ", db_name)
-            success = train_db(db_name)
-            training_queue.remove(db_name)
-
-            if not success:
+            try:
+                # We can't have this throw an error, so we wrap it in a try/except
+                success = train_db(db_name)
+            except:
                 # TODO: Alert us that something went wrong
                 pass
+            training_queue.remove(db_name)
         else:
             print ("training already in progress for ", db_name)
             continue
@@ -366,26 +428,64 @@ def train_indexes():
 def find_indexes_to_train():
     # Loop through all of the dbs and find the ones that need to be trained
 
-    print ("training_queue", training_queue)
+    if not (os.path.exists(db_path)):
+        os.mkdir(db_path)
+    db_names = os.listdir(db_path)
 
-    for db_name in databases:
-        print ("db_name ", db_name)
-        db = databases[db_name]
+    if len(training_queue) > 0:
+        # If indexes are already being trained, return the training queue
+        # We can't have multiple indexes being trained at the same time in different threads, nor is it necessary
+        return {"training_queue": training_queue}
+
+    for db_name in db_names:
+        db = databases.get(db_name, operations=operations)
+        with initial_training_queue_lock:
+            # If this db is in the initial training queue, skip it
+            if db_name in initial_training_queue:
+                continue
         needs_training = utils.check_needs_training(
             db_name, db.num_vectors, operations, db.trained_index_coverage_ratio)
-        print (f"{db_name} needs_training ", needs_training)
-        if needs_training and db_name not in training_queue:
-            print ("adding to training queue")
+        if needs_training:
             training_queue.append(db_name)
-            print ("training_queue ", training_queue)
     
-    # Start training the indexes in a new thread
-    thread = threading.Thread(target=train_indexes)
-    thread.start()
+    # Start training the indexes in a new thread, if there are any
+    if (len(training_queue) > 0):
+        thread = threading.Thread(target=train_indexes)
+        thread.start()
 
     return {"training_queue": training_queue}
     
 
+
+@app.get("/db/get_initial_training_queue")
+def get_initial_training_queue():
+    # Loop through all of the dbs and find the ones that need to be trained
+    return {"initial_training_queue": initial_training_queue}
+
+
+@app.get("/db/view_cache")
+def view_cache():
+    # We don't want to actually return the cache, just the keys
+    cache_keys = [key for key in databases.cache]
+    current_memory_usage = databases.current_memory_usage
+    max_memory_usage = databases.max_memory_usage
+
+    return {
+        "cache_keys": cache_keys,
+        "current_memory_usage": current_memory_usage,
+        "max_memory_usage": max_memory_usage
+    }
+
+@app.post("/db/{db_name}/remove_from_cache")
+def remove_from_cache(db_name: str):
+    databases.remove(db_name)
+    return {"message": "Database removed from cache"}
+
+
+@app.post("/db/update_max_memory_usage")
+def update_max_memory_usage(max_memory_usage: MaxMemoryInput):
+    databases.update_max_memory_usage(max_memory_usage = max_memory_usage.max_memory_usage, operations=operations)
+    return {"message": "Max memory usage updated successfully"}
 
 """
 Usage

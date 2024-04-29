@@ -124,7 +124,7 @@ def get_default_faiss_params(vector_dimension: int) -> dict:
         return {
             "pca_dimension": 512,
             "opq_dimension": 256,
-            "compressed_vector_bytes": 64,
+            "compressed_vector_bytes": 32,
         }
     else:
         return {
@@ -168,7 +168,7 @@ def check_needs_initial_training(db_name: str, num_vectors: int, faiss_index, op
     
     # If there are fewer than 50k vectors, we don't need to train
     if num_vectors < params.num_vector_training_cutoff:
-        print ("num vectors is less than 50k", num_vectors)
+        #print ("num vectors is less than 50k", num_vectors)
         return False
     
     # If there is already an index, we don't need to train

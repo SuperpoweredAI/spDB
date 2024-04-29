@@ -67,6 +67,7 @@ class spDB:
         self.max_id = -1
         self.max_memory_usage = max_memory_usage
         self.faiss_index = None
+        self.training_params = None
 
         self.max_trained_id = 0
         self.num_vectors_trained_on = 0
@@ -94,6 +95,7 @@ class spDB:
     def _initialize_from_config(self) -> None:
         
         config_params = self.read_config_params()
+        print("config_params", config_params)
         self._vector_dimension = config_params["vector_dimension"]
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]
@@ -102,6 +104,7 @@ class spDB:
         self.num_vectors_trained_on = config_params["num_vectors_trained_on"]
         self.num_new_vectors = config_params["num_new_vectors"]
         self.num_trained_vectors_removed = config_params["num_trained_vectors_removed"]
+        self.training_params = config_params["training_params"]
 
         # set the lmdb path
         self._lmdb_path = os.path.join(self.save_path, 'lmdb')
@@ -216,7 +219,7 @@ class spDB:
         if add_to_new_faiss_index:
             self.new_faiss_index.add_with_ids(vectors, ids)
         
-        logger.info(f'Added vectors and text to LMDB and faiss index')
+        #logger.info(f'Added vectors and text to LMDB and faiss index')
 
         self._vector_dimension = vectors.shape[1]
         self.update_training_data_stats(ids_added=ids)
@@ -246,6 +249,14 @@ class spDB:
             opq_dimension = default_params['opq_dimension']
         if compressed_vector_bytes is None:
             compressed_vector_bytes = default_params['compressed_vector_bytes']
+        
+        self.training_params = {
+            'pca_dimension': pca_dimension,
+            'opq_dimension': opq_dimension,
+            'compressed_vector_bytes': compressed_vector_bytes,
+            'omit_opq': omit_opq,
+            'num_clusters': num_clusters
+        }
 
         # log the training parameters individually
         logger.info(f'pca_dimension: {pca_dimension}')
@@ -356,6 +367,8 @@ class spDB:
 
         :return: two lists containing the reranked text and their corresponding IDs, respectively.
         """
+
+        final_top_k = min(final_top_k, self.num_vectors)
 
         # Check if the query vector is a list, and if so, convert it to a numpy array
         if isinstance(query_vector, list):
@@ -473,10 +486,10 @@ class spDB:
         with self._faiss_lock:
             if self.faiss_index is not None:
                 faiss_index_path = os.path.join(self.save_path, f'faiss_index.index')
-                logger.info(f'Saving faiss index to disk at {faiss_index_path}')
+                #logger.info(f'Saving faiss index to disk at {faiss_index_path}')
 
                 faiss.write_index(self.faiss_index, faiss_index_path)
-                logger.info(f'faiss index saved to disk at {faiss_index_path}')
+                #logger.info(f'faiss index saved to disk at {faiss_index_path}')
 
             self.save_config_params()
 
@@ -496,6 +509,7 @@ class spDB:
             "num_vectors_trained_on": self.num_vectors_trained_on,
             "num_trained_vectors_removed": self.num_trained_vectors_removed,
             "num_new_vectors": self.num_new_vectors,
+            "training_params": self.training_params
         }
         config_file_path = os.path.join(self.save_path, 'config.json')
         with open(config_file_path, 'w') as f:
