@@ -157,7 +157,7 @@ class TestFastAPI(unittest.TestCase):
         self.assertEqual(num_vectors, 32000)
         self.assertEqual(n_total, 32000)
         self.assertEqual(num_new_vectors, 2000)
-        self.assertEqual(trained_index_coverage_ratio, 0.9375)
+        self.assertEqual(trained_index_coverage_ratio, 0.9375) # 30,000 / 32,000
     
 
     def test__005_remove(self):
@@ -248,7 +248,7 @@ class TestFastAPI(unittest.TestCase):
                 time.sleep(20)
 
 
-    def test__01_tear_down(self):
+    def test__010_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
         assert response.status_code == 200
 
