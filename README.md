@@ -5,7 +5,7 @@ It’s possible to build a vector database with extremely low memory requirement
 
 With spDB, you can index and query 100M 768d vectors with peak memory usage of around 3GB. With an in-memory vector DB, you would need ~340GB of RAM. This means you could easily index and query all of Wikipedia on an average Macbook.
 
-**Note:** This is currently in a beta phase, and has not been fully testing in a production environment. There could be bugs or additional limitations that are not listed here. There may also be breaking changes in the future.
+**Note:** This is currently in a beta phase, and has not been fully tested in a production environment. It is possible there are bugs or edge cases that have not been tested, or additional limitations that are not listed here. There may also be breaking changes in the future.
 
 ## Architecture overview
 spDB uses a two-step process to perform approximate nearest neighbors search. First, a highly compressed Faiss index is searched to find the `preliminary_top_k` (set to 500 by default) results. Then the full uncompressed vectors for these results are retrieved from a key-value store on disk, and a k-nearest neighbors search is performed on these vectors to arrive at the `final_top_k` results.
