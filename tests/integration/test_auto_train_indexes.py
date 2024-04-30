@@ -41,7 +41,7 @@ class TestAutoTrain(unittest.TestCase):
 
             # Add vectors to the database
             batch_size = 1000
-            for i in range(0, len(vectors), batch_size):
+            for i in range(0, 15000, batch_size):
                 data = []
                 for j in range(i, i+batch_size):
                     data.append((vectors[j], {"text": text[j]}))
@@ -58,12 +58,11 @@ class TestAutoTrain(unittest.TestCase):
         vectors = self.vectors
         text = self.text
 
-        # Add more vectors to the first database to get close to 50,000 vectors, but not to it yet
         db_name = "fiqa_test_1"
 
-        # Add 25,000 vectors to the database (for a total of 55,000) to get over 50,000 vectors
+        # Add 15,000 vectors to the database (for a total of 30,000) to get over 25,000 vectors
         batch_size = 1000
-        for i in range(0, 25000, batch_size):
+        for i in range(0, 15000, batch_size):
             data = []
             for j in range(i, i+batch_size):
                 data.append((vectors[j], {"text": text[j]}))
@@ -85,10 +84,10 @@ class TestAutoTrain(unittest.TestCase):
         self.assertTrue(len(indexes_to_train) == 1)
 
 
-        ### Add 25,000 more vectors to the second database to get over 50,000 vectors ###
+        ### Add 15,000 more vectors to the second database to get over 25,000 vectors ###
         db_name = "fiqa_test_2"
         batch_size = 1000
-        for i in range(0, 25000, batch_size):
+        for i in range(0, 15000, batch_size):
             data = []
             for j in range(i, i+batch_size):
                 data.append((vectors[j], {"text": text[j]}))

@@ -21,7 +21,9 @@ By default, all spDB databases are saved to the ~/.spdb directory. This director
 ## Adding and removing items
 To add vectors to your database, use the `db.add()` method. This method takes a list of `(vector, metadata)` tuples, where each vector is itself a list, and each metadata item is a dictionary with keys of your choosing.
 
-## How and when to train the index
+## How the index is trained
+The search index will get automatically trained once the number of vectors exceeds 25,000 (this parameter is configurable in the params.py file). Future training operations occur once the index coverage ratio is below 0.5 (also configurable). You can also train a database at any point by calling the `/db/{db_name}/train` function, or the `db.train()` method if you're not running FastAPI. If there are fewer than 5,000 vectors in a database, the training operation will be skipped and a flat index will still be used. 
+
 In order to query your spDB database, you’ll need to train the search index. You can do this by running the `db.train()` method. The index training process exploits patterns in your vectors to enable more efficient search. In general, you want to add your vectors and then train the index. For more details on exactly when to train and potentially retrain your index, check out our wiki page [here](https://github.com/SuperpoweredAI/spDB/wiki/Search-index-training).
 
 ## Metadata
