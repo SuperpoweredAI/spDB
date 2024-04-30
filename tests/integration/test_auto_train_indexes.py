@@ -153,10 +153,43 @@ class TestAutoTrain(unittest.TestCase):
             else:
                 tries += 1
                 time.sleep(20)
+    
+
+    def test__004_auto_train_above_index_cutoff(self):
+
+        ### Test that the index gets retrained once the index cutoff ratio falls below 0.5 ###
+
+        # Add 30,000 vectors to the first DB
+        vectors = self.vectors
+        text = self.text
+        db_name = "fiqa_test_1"
+        batch_size = 1000
+        for i in range(0, 30000, batch_size):
+            data = []
+            for j in range(i, i+batch_size):
+                data.append((vectors[j], {"text": text[j]}))
+            response = self.client.post(f"/db/{db_name}/add", json={"add_data": data})
+
+        # Call the find indexes to train endpoint
+        response = self.client.get("/db/find_indexes_to_train")
+        training_queue = response.json()["training_queue"]
+        print ("training_queue", training_queue)
+        self.assertEqual(len(training_queue), 1)
+
+        # Wait for training to complete
+        tries = 0
+        while tries < 40:
+            response = self.client.get(f"/db/fiqa_test_1/train")
+            status = response.json()["status"]
+            if status == "complete":
+                break
+            else:
+                tries += 1
+                time.sleep(20)
 
     
     # Call the auto train endpoint
-    def test__004_tear_down(self):
+    def test__005_tear_down(self):
         print ("deleting dbs")
 
         for db_name in self.db_names:

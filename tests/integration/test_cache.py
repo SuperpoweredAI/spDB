@@ -31,8 +31,6 @@ class TestAutoTrain(unittest.TestCase):
         self.opq_dimension = 128
         self.compressed_vector_bytes = 32
         self.omit_opq = False
-        self.query_k = 500
-        self.gt_k = 50
 
         vectors, text, _, _ = fiqa_test_data()
         self.vectors = vectors.tolist()
@@ -49,9 +47,9 @@ class TestAutoTrain(unittest.TestCase):
             response = self.client.post("/db/create", json={"name": db_name})
             self.assertTrue(response.status_code == 200)
 
-            # Add vectors to the database
+            # Add vectors to the database (below the training cutoff so the db is a flat index)
             batch_size = 1000
-            for i in range(0, len(vectors), batch_size):
+            for i in range(0, 20000, batch_size):
                 data = []
                 for j in range(i, i+batch_size):
                     data.append((vectors[j], {"text": text[j]}))
@@ -71,7 +69,7 @@ class TestAutoTrain(unittest.TestCase):
         db_name = self.db_names[0]
 
         # This is the memory usage needed for the tests to work properly
-        new_max_memory_usage = 200 * 1024 * 1024
+        new_max_memory_usage = 150 * 1024 * 1024
         response = self.client.post("/db/update_max_memory_usage", json={"max_memory_usage": new_max_memory_usage})
         print ("response", response.json())
     
@@ -95,21 +93,21 @@ class TestAutoTrain(unittest.TestCase):
         # Convert the db info from a string to a dictionary
         db_info = json.loads(db_info)
         n_total = db_info["n_total"]
-        self.assertTrue(n_total == 30000)
+        self.assertTrue(n_total == 20000)
 
         # View the cache
         response = self.client.get("/db/view_cache")
         current_memory_usage = response.json()["current_memory_usage"]
         print ("current_memory_usage", current_memory_usage)
 
-        # Make sure the memory usage is less than 100MB
+        # Make sure the memory usage is less than 80MB
         # If it's higher, then the cache memory wouldn't have updated the after training
-        self.assertTrue(current_memory_usage < (100 * 1024 * 1024))
+        self.assertTrue(current_memory_usage < (80 * 1024 * 1024))
     
 
     def test__003_auto_remove_cache(self):
 
-        # Create 2 more DBs and add 30,000 vectors to each in order to get above 200MB
+        # Create 2 more DBs and add 20,000 vectors to each in order to get above 150MB
         new_db_names = ["fiqa_test_3", "fiqa_test_4"]
         for db_name in new_db_names:
             response = self.client.post("/db/create", json={"name": db_name})
@@ -117,7 +115,7 @@ class TestAutoTrain(unittest.TestCase):
 
             # Add vectors to the database
             batch_size = 1000
-            for i in range(0, len(self.vectors), batch_size):
+            for i in range(0, 20000, batch_size):
                 data = []
                 for j in range(i, i+batch_size):
                     data.append((self.vectors[j], {"text": self.text[j]}))
@@ -240,8 +238,8 @@ class TestAutoTrain(unittest.TestCase):
         print ("cache_keys test 006", cache_keys)
         self.assertTrue(len(cache_keys) == 3)
 
-        # Set the memory usage back to 200MB
-        new_max_memory_usage = 200 * 1024 * 1024
+        # Set the memory usage back to 150MB
+        new_max_memory_usage = 150 * 1024 * 1024
         response = self.client.post("/db/update_max_memory_usage", json={"max_memory_usage": new_max_memory_usage})
         print ("response", response.json())
 

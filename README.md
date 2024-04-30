@@ -24,7 +24,7 @@ To add vectors to your database, use the `db.add()` method. This method takes a 
 ## How the index is trained
 The search index will get automatically trained once the number of vectors exceeds 25,000 (this parameter is configurable in the params.py file). Future training operations occur once the index coverage ratio is below 0.5 (also configurable). You can also train a database at any point by calling the `/db/{db_name}/train` function, or the `db.train()` method if you're not running FastAPI. If there are fewer than 5,000 vectors in a database, the training operation will be skipped and a flat index will still be used. 
 
-In order to query your spDB database, you’ll need to train the search index. You can do this by running the `db.train()` method. The index training process exploits patterns in your vectors to enable more efficient search. In general, you want to add your vectors and then train the index. For more details on exactly when to train and potentially retrain your index, check out our wiki page [here](https://github.com/SuperpoweredAI/spDB/wiki/Search-index-training).
+We don't recommend setting the number of vectors before training much higher than 25,000 due to increased memory usage and query latency. Untrained indexes use a flat Faiss index, which means the full uncompressed vectors are held in memory. Searches over a flat index are done via a brute force method, which gets substantially slower as the number of vectors increases.
 
 ## Metadata
 You can add metadata to each vector by including a metadata dictionary. You can include whatever metadata fields you want, but the keys and values should all be serializable.
