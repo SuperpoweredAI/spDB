@@ -19,7 +19,9 @@ For a quickstart guide, check out our getting started example [here](https://git
 By default, all spDB databases are saved to the ~/.spdb directory. This directory is created automatically if it doesn’t exist when you initialize an spDB object. You can override this path by specifying a save_path when you create your spDB object.
 
 ## Adding and removing items
-To add vectors to your database, use the `db.add()` method. This method takes a list of `(vector, metadata)` tuples, where each vector is itself a list, and each metadata item is a dictionary with keys of your choosing.
+To add vectors to your database, call the `/db/{db_name}/add` endpoint, or use the `db.add()` method. This takes a list of `(vector, metadata)` tuples, where each vector is itself a list, and each metadata item is a dictionary with keys of your choosing.
+
+To remove items, you must pass in a list of ids corresponding to the vectors that you want removed if using FastAPI, or an array of ids when directly using spDB. 
 
 ## How the index is trained
 The search index will get automatically trained once the number of vectors exceeds 25,000 (this parameter is configurable in the params.py file). Future training operations occur once the index coverage ratio is below 0.5 (also configurable). You can also train a database at any point by calling the `/db/{db_name}/train` function, or the `db.train()` method if you're not running FastAPI. If there are fewer than 5,000 vectors in a database, the training operation will be skipped and a flat index will still be used. 
