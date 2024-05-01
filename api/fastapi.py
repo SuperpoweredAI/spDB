@@ -12,19 +12,13 @@ from cache.cache import LRUCache
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 
-# Install FastAPI and Uvicorn
-# pip install fastapi uvicorn
-
-
 app = FastAPI()
-
 
 # Load all databases located in the ~/.spdb folder into a dictionary
 db_path = os.path.join(os.path.expanduser("~"), ".spdb")
 
 # Initialize the Cache class
 databases = LRUCache(max_memory_usage=1 * 1024 * 1024 * 1024) # 1 GB
-
 
 operations = {}
 unassigned_vectors = {}
@@ -34,7 +28,6 @@ initial_training_queue_lock = threading.Lock()
 vectors_to_remove = {}
 
 # Define request and response models
-
 
 class AddInput(BaseModel):
     add_data: List[Tuple]
@@ -85,8 +78,6 @@ def get_info(db_name: str):
     db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    
-    # Do we want to put this into the cache if we're just viewing the info?
 
     if db.faiss_index == None:
         n_total = 0
@@ -136,7 +127,6 @@ def check_for_initial_training(db_name: str):
         pass
     needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
     if needs_training:
-        print ("starting training inside check_for_initial_training")
         train_db(db_name)
 
 
@@ -146,7 +136,6 @@ def train_initial_indexes():
         db_name = initial_training_queue[0]
         
         if db_name not in operations:
-            print ("initial training ", db_name)
             try:
                 # We can't have this throw an error, so we wrap it in a try/except
                 success = train_db(db_name)
@@ -156,7 +145,6 @@ def train_initial_indexes():
             with initial_training_queue_lock:
                 initial_training_queue.remove(db_name)
         else:
-            print ("training already in progress for ", db_name)
             initial_training_queue.remove(db_name)
 
 
@@ -215,9 +203,6 @@ def remove_vectors_by_id(db_name: str, ids: RemoveInput):
         if db_name not in vectors_to_remove:
             vectors_to_remove[db_name] = []
         vectors_to_remove[db_name].extend(ids.ids)
-
-    #if db_name not in databases:
-    #    raise HTTPException(status_code=404, detail="Database not found")
     
     db = databases.get(db_name, operations=operations)
     if db == None:
@@ -328,8 +313,6 @@ def start_train_db(db_name: str):
     db = databases.get(db_name, operations=operations)
     if db == None:
         raise HTTPException(status_code=404, detail="Database not found")
-    #if db_name not in databases:
-    #    raise HTTPException(status_code=404, detail="Database not found")
 
     # Check if this db is already training
     if db_name in operations:
