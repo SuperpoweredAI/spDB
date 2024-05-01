@@ -55,9 +55,7 @@ class LRUCache:
                 # Loop through the cache and find the first key that isn't in the operations list
                 first_key = None
                 keys = list(self.cache.keys())
-                print ("keys", keys)
                 for item in keys:
-                    print (item)
                     if (item not in operations) or (item in operations and (operations[item] == "complete" or operations[item] == "untrained")):
                         first_key = item
                         break
@@ -82,7 +80,6 @@ class LRUCache:
                 # Loop through the cache and find the first key that isn't in the operations list
                 first_key = None
                 keys = list(self.cache.keys())
-                print ("keys", keys)
                 for key in keys:
                     if (key not in operations) or (key in operations and (operations[key] == "complete" or operations[key] == "untrained")):
                         first_key = key
