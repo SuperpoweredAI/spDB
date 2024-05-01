@@ -50,7 +50,3 @@ You can also learn more about FastAPI [here](https://fastapi.tiangolo.com).
 - [Contributing](https://github.com/SuperpoweredAI/spDB/wiki/Contributing)
 - [Development roadmap](https://github.com/SuperpoweredAI/spDB/wiki/Development-roadmap)
 - [Examples](https://github.com/SuperpoweredAI/spDB/tree/main/examples)
-
-
-## Join the spDB community
-Join our Discord [here](https://discord.gg/XY5ErJgE2q)
