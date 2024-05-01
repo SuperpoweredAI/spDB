@@ -95,7 +95,6 @@ class spDB:
     def _initialize_from_config(self) -> None:
         
         config_params = self.read_config_params()
-        print("config_params", config_params)
         self._vector_dimension = config_params["vector_dimension"]
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]
@@ -345,8 +344,8 @@ class spDB:
         try:
             self.new_faiss_index.add_with_ids(unassigned_vectors, vector_ids)
         except Exception as e:
-            print ("Exception in add_unassigned_vectors", e)
-            print ("No new faiss index")
+            logger.info("Exception in add_unassigned_vectors " + e)
+            logger.info("No new faiss index")
             return False
         
         # These vectors won't be part of the training dataset, so they are new vectors
