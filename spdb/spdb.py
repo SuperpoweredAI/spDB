@@ -7,10 +7,8 @@ import shutil
 import threading
 from faiss.contrib.exhaustive_search import knn
 
-from . import utils
-from . import lmdb_utils
-from . import input_validation
-from . import train
+from spdb.utils import lmdb_utils, training_utils, faiss_utils, query_utils, input_validation
+from spdb.train import train
 
 
 def configure_logging(level=logging.INFO):
@@ -156,7 +154,7 @@ class spDB:
         Get the coverage ratio of the trained index.
         """
 
-        return utils.calculate_trained_index_coverage_ratio(
+        return training_utils.calculate_trained_index_coverage_ratio(
             self.num_vectors_trained_on, self.num_new_vectors, self.num_trained_vectors_removed)
 
     def add(self, data: list[tuple[np.ndarray, dict]], add_to_new_faiss_index: bool = False) -> list:
@@ -169,7 +167,7 @@ class spDB:
         """
 
         # Check if the index is flat or not
-        is_flat_index = utils.check_is_flat_index(self.faiss_index)
+        is_flat_index = faiss_utils.check_is_flat_index(self.faiss_index)
 
         # Validate the inputs
         vectors, metadata, is_valid, reason = input_validation.validate_add(
@@ -189,7 +187,7 @@ class spDB:
             faiss_index = faiss.IndexIDMap(index)
             with self._faiss_lock:
                 self.faiss_index = faiss_index
-        ids = utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
+        ids = faiss_utils.create_faiss_index_ids(self.max_id, vectors.shape[0])
         self.max_id = ids[-1]
 
         with self._lmdb_lock:
@@ -241,7 +239,7 @@ class spDB:
         logger.info('Training the Faiss index')
 
         # get default parameters
-        default_params = utils.get_default_faiss_params(self.vector_dimension)
+        default_params = training_utils.get_default_faiss_params(self.vector_dimension)
         if pca_dimension is None:
             pca_dimension = default_params['pca_dimension']
         if opq_dimension is None:
@@ -286,7 +284,7 @@ class spDB:
 
         if use_two_level_clustering is None:
             # Figure out which training method is optimal based off the max memory usage and number of vectors
-            use_two_level_clustering = utils.is_two_level_clustering_optimal(
+            use_two_level_clustering = training_utils.is_two_level_clustering_optimal(
                 max_memory_usage=self.max_memory_usage,
                 vector_dimension=self.vector_dimension,
                 num_vectors=self.num_vectors
@@ -318,6 +316,11 @@ class spDB:
                 lmdb_lock=self._lmdb_lock,
                 num_clusters=num_clusters
             )
+
+        if new_faiss_index is None:
+            logger.error('Training failed. Index was likely deleted during the training operation.')
+            self.new_faiss_index = None
+            return
         
         # Save the max id used when training the index
         # Convert each value of lmdb_index_ids to an int
@@ -385,7 +388,7 @@ class spDB:
         # query faiss index
         with self._faiss_lock:
             # For a flat index, there is no need for a preliminary top k
-            is_flat_index = utils.check_is_flat_index(self.faiss_index)
+            is_flat_index = faiss_utils.check_is_flat_index(self.faiss_index)
             if is_flat_index:
                 # Check the number of vectors in the index
                 if self.faiss_index.ntotal >= 50000:
@@ -397,7 +400,7 @@ class spDB:
                         self.lmdb_uncompressed_vectors_path, I)
                 with self._lmdb_lock:
                     metadata = lmdb_utils.get_lmdb_metadata_by_ids(self.lmdb_metadata_path, I.tolist()[0])
-                cosine_similarity = utils.calculate_cosine_similarity(query_vector, corpus_vectors)
+                cosine_similarity = query_utils.calculate_cosine_similarity(query_vector, corpus_vectors)
                 
                 return {
                     "ids": I[0].tolist(),
@@ -416,7 +419,7 @@ class spDB:
 
         # Get the final vectors. reranked_I is a list of indices in the corpus_vectors array
         final_vectors = corpus_vectors[reranked_I[0]]
-        cosine_similarity = utils.calculate_cosine_similarity(query_vector, final_vectors)
+        cosine_similarity = query_utils.calculate_cosine_similarity(query_vector, final_vectors)
 
         # Get the ids of the reranked vectors
         reranked_ids = [position_to_id_map[position] for position in reranked_I[0]]

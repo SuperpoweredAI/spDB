@@ -9,7 +9,7 @@ sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from helpers import fiqa_test_data
 
-from api.fastapi import app
+from spdb.api.fastapi import app
 
 
 

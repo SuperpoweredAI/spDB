@@ -11,7 +11,7 @@ from helpers import fiqa_test_data
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../../'))
 
-from api.fastapi import app
+from spdb.api.fastapi import app
 
 
 

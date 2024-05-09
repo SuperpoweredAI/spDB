@@ -1,4 +1,9 @@
 import unittest
+import os
+import sys
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 import helpers
 from spdb.spdb import spDB
@@ -55,3 +60,6 @@ class TestIndexCoverageRatio(unittest.TestCase):
 
         # Delete the database
         self.tear_down()
+
+if __name__ == "__main__":
+    unittest.main()

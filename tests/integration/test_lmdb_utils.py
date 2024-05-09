@@ -3,8 +3,12 @@ import lmdb
 import shutil
 import numpy as np
 import os
+import sys
 
-from spdb import lmdb_utils
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
+
+from spdb.utils import lmdb_utils
 import helpers
 
 
@@ -66,3 +70,7 @@ class TestLmdbUtils(unittest.TestCase):
 
     def test_007__tear_down(self):
         shutil.rmtree(self.lmdb_path)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -9,7 +9,7 @@ import string
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../../'))
 
-from cache.cache import LRUCache
+from spdb.cache.cache import LRUCache
 from spdb.spdb import spDB, load_db
 
 

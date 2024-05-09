@@ -1,13 +1,13 @@
-from spdb.spdb import spDB, load_db, lmdb_utils, utils
+from spdb.spdb import spDB, load_db
+from spdb.utils import training_utils, lmdb_utils
 import os
-import sys
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
 import threading
 import json
 import time
-from cache.cache import LRUCache
+from spdb.cache.cache import LRUCache
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -125,7 +125,7 @@ def check_for_initial_training(db_name: str):
     if db == None:
         # Not sure what needs to happen here. This really should never happen
         pass
-    needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
+    needs_training = training_utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
     if needs_training:
         train_db(db_name)
 
@@ -138,7 +138,7 @@ def train_initial_indexes():
         if db_name not in operations:
             try:
                 # We can't have this throw an error, so we wrap it in a try/except
-                success = train_db(db_name)
+                train_db(db_name)
             except:
                 # TODO: Alert us that something went wrong
                 pass
@@ -170,7 +170,7 @@ def add_vectors(db_name: str, data: AddInput):
             unassigned_vectors[db_name] = []
         unassigned_vectors[db_name].extend(ids)
     
-    needs_training = utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
+    needs_training = training_utils.check_needs_initial_training(db_name, db.num_vectors, db.faiss_index, operations)
     if needs_training:
         with initial_training_queue_lock:
             # get the length of the queue before adding the db_name
@@ -248,7 +248,7 @@ def train_db(db_name: str):
         raise HTTPException(status_code=404, detail="Database not found")
     operations[db_name] = "in progress"
 
-    training_params = utils.get_training_params(db.max_memory_usage, db.vector_dimension, db.num_vectors)
+    training_params = training_utils.get_training_params(db.max_memory_usage, db.vector_dimension, db.num_vectors)
 
     db.train(
         use_two_level_clustering=training_params["use_two_level_clustering"],
@@ -289,8 +289,13 @@ def train_db(db_name: str):
     # When the operation is complete, update the operation status to 'complete', set the faiss index
     # to the new faiss index, and remove the new faiss index
     with db._faiss_lock:
-        db.faiss_index = db.new_faiss_index
-        db.new_faiss_index = None
+        if db.new_faiss_index is not None:
+            db.faiss_index = db.new_faiss_index
+            db.new_faiss_index = None
+        else:
+            print ("No new faiss index found")
+            operations[db_name] = "failed"
+            return
     
     # This has to be done outside of the faiss lock since the save operation will acquire the lock
     print ("Saving the new faiss index")
@@ -304,8 +309,6 @@ def train_db(db_name: str):
     time.sleep(5)
     # Perform the cleanup operation to make sure all of the vectors have been added to the faiss index
     cleanup_training(db_name)
-
-    return True
 
 
 @app.post("/db/{db_name}/train")
@@ -422,7 +425,7 @@ def find_indexes_to_train():
             # If this db is in the initial training queue, skip it
             if db_name in initial_training_queue:
                 continue
-        needs_training = utils.check_needs_training(
+        needs_training = training_utils.check_needs_training(
             db_name, db.num_vectors, operations, db.trained_index_coverage_ratio)
         if needs_training:
             training_queue.append(db_name)

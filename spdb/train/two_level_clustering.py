@@ -3,8 +3,7 @@ import logging
 import numpy as np
 import time
 
-from . import lmdb_utils
-from . import utils
+from spdb.utils import lmdb_utils, training_utils
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ def two_level_clustering(num_coarse_clusters: int, num_total_clusters: int, unco
     all_vector_transforms: list, max_memory_usage: int, vector_dimension: int, lmdb_lock, clustering_niter: int = 25) -> np.ndarray:
 
     # Define the number of vectors to pull in from the lmdb at a time (can't hold all vectors in memory at once)
-    num_vectors_per_batch = utils.get_num_vectors_per_batch(max_memory_usage, vector_dimension)
+    num_vectors_per_batch = training_utils.get_num_vectors_per_batch(max_memory_usage, vector_dimension)
 
     max_samples = num_coarse_clusters*256  # max of 256 samples per centroid
     random_sub_sample, _ = get_random_vectors(max_samples, uncompressed_vectors_lmdb_path, lmdb_lock)

@@ -86,7 +86,11 @@ def get_lmdb_metadata_by_ids(metadata_lmdb_path: str, ids: list) -> list:
 
 
 def get_lmdb_vectors_by_ids(uncompressed_vectors_lmdb_path: str, ids: list) -> np.ndarray:
-    env = lmdb.open(uncompressed_vectors_lmdb_path)
+    try:
+        env = lmdb.open(uncompressed_vectors_lmdb_path)
+    except FileNotFoundError as e:
+        print("error", e)
+        return None
     # Get the ids from the LMDB
     with env.begin() as txn:
         vectors = []

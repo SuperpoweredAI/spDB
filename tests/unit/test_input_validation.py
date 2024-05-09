@@ -5,7 +5,7 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../../")
 
-from spdb import input_validation
+from spdb.utils import input_validation
 
 class TestNameInputParameters(unittest.TestCase):
 
