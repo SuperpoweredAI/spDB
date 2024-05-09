@@ -124,7 +124,7 @@ def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.Index
             vectors = lmdb_utils.get_lmdb_vectors_by_ids(
                 uncompressed_vectors_lmdb_path, batch_ids)
         # Make sure the vectors are not None. This happens if the lmdb folder is not found
-        if vectors is not None:
+        if vectors is None:
             logger.debug("returning None")
             return None
         
