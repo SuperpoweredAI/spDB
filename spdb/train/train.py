@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import time
 
-from spdb.train.train import two_level_clustering
+from spdb.train import two_level_clustering
 from spdb.utils import lmdb_utils, training_utils
 
 

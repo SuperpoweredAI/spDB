@@ -1,6 +1,6 @@
 import numpy as np
 from spdb.utils.faiss_utils import check_is_flat_index
-from spdb.train.train import training_params
+from spdb.train import training_params
 
 def get_num_clusters(num_vectors: int) -> int:
     # Get the number of clusters to use for the IVF index, based on the number of vectors
