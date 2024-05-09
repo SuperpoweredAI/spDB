@@ -72,10 +72,8 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
         vectors = lmdb_utils.get_lmdb_vectors_by_ids(
             uncompressed_vectors_lmdb_path, random_indices)
     
-    logger.info("is vectors None")
-    logger.info(vectors is None)
     if vectors is None:
-        logger.info("returning None, None")
+        logger.debug("returning None, None")
         return None, None
 
     # create the index
@@ -88,10 +86,8 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
     if index is not None:
         logger.info(f'added {index.ntotal} vectors to index')
 
-    logger.info("is vectors None")
-    logger.info(index is None)
     if index is None:
-        logger.info("returning None, None")
+        logger.debug("returning None, None")
         return None, None
 
     # Set the n_probe parameter (I think it makes sense here since n_probe is dependent on num_clusters)
@@ -127,11 +123,12 @@ def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.Index
         with lmdb_lock:
             vectors = lmdb_utils.get_lmdb_vectors_by_ids(
                 uncompressed_vectors_lmdb_path, batch_ids)
-        # Add the vectors to the index
+        # Make sure the vectors are not None. This happens if the lmdb folder is not found
         if vectors is not None:
-            index.add_with_ids(vectors, batch_ids)
-        else:
-            logger.info("vectors is None")
+            logger.debug("returning None")
             return None
+        
+        # Add the vectors to the index         
+        index.add_with_ids(vectors, batch_ids)
 
     return index

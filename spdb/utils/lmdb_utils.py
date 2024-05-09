@@ -5,7 +5,8 @@ import json
 from typing import Callable
 
 
-MAP_SIZE = 1024 * 1024 * 1024 * 1024  # 1TB
+# TODO: Make this a system parameter
+MAP_SIZE = 100 * 1024 * 1024 * 1024 # 100GB
 
 
 def create_lmdb(lmdb_path: str, db_name: str) -> str:
@@ -19,7 +20,7 @@ def create_lmdb(lmdb_path: str, db_name: str) -> str:
 
 def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable) -> None:
     # Add the text to LMDB
-    env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
+    env = lmdb.open(db_path, map_size=MAP_SIZE)
     with env.begin(write=True) as txn:
         for i, item in enumerate(items):
             if isinstance(item, dict):
@@ -31,7 +32,7 @@ def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable)
 
 def remove_from_lmdb(db_path: str, ids: list):
     # remove the vectors to the LMDB
-    env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
+    env = lmdb.open(db_path, map_size=MAP_SIZE)
     ids_deleted = []
     with env.begin(write=True) as txn:
         for id in ids:
