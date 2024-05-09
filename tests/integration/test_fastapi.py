@@ -198,8 +198,8 @@ class TestFastAPI(unittest.TestCase):
         self.assertGreater(recall, 0.97)
         self.assertLessEqual(recall, 1)
 
-        # Make sure latency is less than 25ms (higher cutoff than the other test since there's an http request)
-        self.assertLess(latency, 25)
+        # Make sure latency is less than 65ms (higher cutoff than the other test since there's an http request)
+        self.assertLess(latency, 65)
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))

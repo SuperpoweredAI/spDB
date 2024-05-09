@@ -125,7 +125,7 @@ class TestFastAPI(unittest.TestCase):
             response = self.client.get(f"/db/{self.db_name}/info")
             self.assertEqual(response.status_code, 200)
 
-            # Make sure there are 70000 vectors in the database, both for num_vectors and n_total (which is the faiss index)
+            # Make sure there are 40000 vectors in the database, both for num_vectors and n_total (which is the faiss index)
             db_info = json.loads(response.json()["db_info"])
             self.assertEqual(db_info["num_vectors"], 40000)
             self.assertEqual(db_info["n_total"], 40000)
@@ -179,14 +179,12 @@ class TestFastAPI(unittest.TestCase):
 
         ### Create a new database ###
         response = self.client.post("/db/create", json={"name": new_db_name})
-        print (response.text)
-        print ("response.status_code", response.status_code)
-        #self.assertTrue(response.status_code == 200)
+        self.assertTrue(response.status_code == 200)
 
 
-        ### Add the data ###
+        ### Add the data (just below the auto train cutoff) ###
         batch_size = 1000
-        for i in range(0, len(vectors), batch_size):
+        for i in range(0, 24000, batch_size):
             data = []
             for j in range(i, i+batch_size):
                 data.append((vectors[j], {"text": text[j]}))
@@ -208,13 +206,13 @@ class TestFastAPI(unittest.TestCase):
 
         ### Remove vectors while training ###
         batch_size = 1000
-        for i in range(0, 10000, batch_size):
+        for i in range(0, 4000, batch_size):
             print (i)
             ids = list(range(i, i+batch_size))
             response = self.client.post(f"/db/{new_db_name}/remove", json={"ids": ids})
         self.assertTrue(response.status_code == 200)
 
-        # There should be 30000 vectors total, but only 20000 in the faiss index
+        # There should be 24000 vectors total, but only 20000 in the faiss index
         # This is because we remove the vectors from faiss, but not from LMDB when a training operation is happening
         response = self.client.get(f"/db/{new_db_name}/info")
         db_info = json.loads(response.json()["db_info"])
@@ -222,7 +220,7 @@ class TestFastAPI(unittest.TestCase):
         n_total = db_info["n_total"]
         num_vectors = db_info["num_vectors"]
         self.assertEqual(n_total, 20000)
-        self.assertEqual(num_vectors, 30000)
+        self.assertEqual(num_vectors, 24000)
 
 
         # Wait for the training to complete
@@ -261,3 +259,6 @@ class TestFastAPI(unittest.TestCase):
         response = self.client.post(f"/db/{new_db_name}/delete")
         # This can fail since the DB should have already deleted, so we can't assert a status
         # But it's fine if it fails, since we just want to make sure the DB is deleted
+
+if __name__ == "__main__":
+    unittest.main()

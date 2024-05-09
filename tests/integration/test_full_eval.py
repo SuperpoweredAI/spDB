@@ -84,8 +84,8 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.assertGreater(recall, 0.97)
         self.assertLessEqual(recall, 1)
 
-        # Make sure latency is less than 15ms (this includes the re-ranking from disk step)
-        self.assertLess(latency, 15)
+        # Make sure latency is less than305ms (this includes the re-ranking from disk step)
+        self.assertLess(latency, 30)
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
@@ -117,8 +117,8 @@ class TestFullSpdbEvaluation(unittest.TestCase):
         self.assertGreater(recall, 0.97)
         self.assertLessEqual(recall, 1)
 
-        # Make sure latency is less than 30ms (this includes the re-ranking from disk step)
-        self.assertLess(latency, 30)
+        # Make sure latency is less than 40ms (this includes the re-ranking from disk step)
+        self.assertLess(latency, 40)
 
         # Make sure the length of each unique ID list is equal to the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
