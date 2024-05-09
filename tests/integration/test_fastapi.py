@@ -37,7 +37,7 @@ class TestFastAPI(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
-        self.db_name = "fiqa_test"
+        self.db_name = "fast_api_test"
         self.pca_dimension = 256
         self.opq_dimension = 128
         self.compressed_vector_bytes = 32
@@ -73,18 +73,8 @@ class TestFastAPI(unittest.TestCase):
         self.assertTrue(response.status_code == 200)
 
     def test__003_train(self):
-        # Train the index, using 2 level clustering
-        """response = self.client.post(f"/db/{self.db_name}/train", json={
-            "use_two_level_clustering": True,
-            "pca_dimension": self.pca_dimension,
-            "opq_dimension": self.opq_dimension,
-            "compressed_vector_bytes": self.compressed_vector_bytes,
-            "omit_opq": True
-        })
-        self.assertTrue(response.status_code == 200)
-        time.sleep(5)"""
 
-        # Try to train the index again. This should fail
+        # Try to train the index. This should fail since it was auto-trained when the vectors were added
         response = self.client.post(f"/db/{self.db_name}/train", json={
             "use_two_level_clustering": True,
             "pca_dimension": self.pca_dimension,
@@ -92,6 +82,7 @@ class TestFastAPI(unittest.TestCase):
             "compressed_vector_bytes": self.compressed_vector_bytes,
             "omit_opq": True
         })
+        print (response.status_code)
         self.assertTrue(response.status_code == 400)
 
         tries = 0
@@ -226,10 +217,9 @@ class TestFastAPI(unittest.TestCase):
         self.assertEqual(trained_index_coverage_ratio, 0.5)
 
 
-    def test__010_tear_down(self):
+    def test__009_tear_down(self):
         response = self.client.post(f"/db/{self.db_name}/delete")
-        print (response)
-        #assert response.status_code == 200
+        self.assertTrue(response.status_code == 200)
 
 if __name__ == "__main__":
     unittest.main()
