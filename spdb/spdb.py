@@ -97,6 +97,7 @@ class spDB:
         self._vector_dimension = config_params["vector_dimension"]
         self.max_id = config_params["max_id"]
         self.max_memory_usage = config_params["max_memory_usage"]
+        self.LMDB_MAP_SIZE=config_params["LMDB_MAP_SIZE"]
 
         self.max_trained_id = config_params["max_trained_id"]
         self.num_vectors_trained_on = config_params["num_vectors_trained_on"]
@@ -512,6 +513,7 @@ class spDB:
             "max_id": self.max_id,
             "vector_dimension": self.vector_dimension,
             "max_memory_usage": self.max_memory_usage,
+            "LMDB_MAP_SIZE": self.LMDB_MAP_SIZE,
             "max_trained_id": self.max_trained_id,
             "num_vectors_trained_on": self.num_vectors_trained_on,
             "num_trained_vectors_removed": self.num_trained_vectors_removed,
