@@ -45,7 +45,7 @@ class TestLRUCache(unittest.TestCase):
 
         db_name = "cache_test_db"
         db = spDB(name=db_name, vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
         
         # Add an item to the cache
         self.cache.put(db_name, db)
@@ -96,7 +96,7 @@ class TestLRUCache(unittest.TestCase):
 
         # Create a couple more DBs and add 30,000 vectors to each in order to get above 200MB
         db = spDB(name="cache_test_db_2", vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
         
         # Add the db to the cache
         self.cache.put("cache_test_db_2", db)
@@ -128,7 +128,7 @@ class TestLRUCache(unittest.TestCase):
 
         # Create another DB
         db = spDB(name="cache_test_db_3", vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
         
         # Add the db to the cache
         self.cache.put("cache_test_db_3", db)
