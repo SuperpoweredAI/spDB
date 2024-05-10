@@ -39,7 +39,7 @@ class spDB:
     """
     A class representing a searchable database using Faiss and LMDB for efficient storage and retrieval of text and vectors.
     """
-    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024, logging_level: int = logging.INFO, create_or_load: str ='create'):
+    def __init__(self, name: str, save_path: str = None, vector_dimension: int = None, max_memory_usage: int = 4*1024*1024*1024, LMDB_MAP_SIZE: int = 100*1024*1024*1024, logging_level: int = logging.INFO, create_or_load: str ='create'):
         """
         Initialize the spDB object.
 
@@ -52,6 +52,7 @@ class spDB:
         self._faiss_lock = threading.Lock()
         self._lmdb_lock = threading.Lock()
         self._save_path = get_spdb_path(name, save_path)
+        self.LMDB_MAP_SIZE = LMDB_MAP_SIZE
 
         if create_or_load == 'create':
             self._initialize_new_db(name, vector_dimension, max_memory_usage)
@@ -195,7 +196,8 @@ class spDB:
                 db_path=self.lmdb_uncompressed_vectors_path,
                 items=vectors,
                 ids=ids,
-                encode_fn=np.ndarray.tobytes
+                encode_fn=np.ndarray.tobytes,
+                LMDB_MAP_SIZE=self.LMDB_MAP_SIZE
             )
         
         with self._lmdb_lock:
@@ -203,7 +205,8 @@ class spDB:
                 db_path=self.lmdb_metadata_path,
                 items=metadata,
                 ids=ids,
-                encode_fn=str.encode
+                encode_fn=str.encode,
+                LMDB_MAP_SIZE=self.LMDB_MAP_SIZE
             )
 
         # If the index is not trained, don't add the vectors to the index
@@ -468,7 +471,8 @@ class spDB:
         with self._lmdb_lock:
             ids_deleted = lmdb_utils.remove_from_lmdb(
                 db_path=self.lmdb_uncompressed_vectors_path,
-                ids=vector_ids
+                ids=vector_ids,
+                LMDB_MAP_SIZE=self.LMDB_MAP_SIZE
             )
         # Update the number of ids removed that were part of the training data, and the number of new ids
         self.update_training_data_stats(ids_deleted=ids_deleted)
@@ -477,7 +481,8 @@ class spDB:
         with self._lmdb_lock:
             lmdb_utils.remove_from_lmdb(
                 db_path=self.lmdb_metadata_path,
-                ids=vector_ids
+                ids=vector_ids,
+                LMDB_MAP_SIZE=self.LMDB_MAP_SIZE
             )
         logger.info(f'Finished removing vectors and text from LMDB and faiss index')
 

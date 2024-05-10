@@ -35,7 +35,7 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         self.db_name = "small_spdb_test"
         self.query_k = 500
         self.gt_k = 50
-        self.db = spDB(self.db_name)
+        self.db = spDB(self.db_name, LMDB_MAP_SIZE=1*1024*1024*1024)
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
     
     def test__small_eval(self):

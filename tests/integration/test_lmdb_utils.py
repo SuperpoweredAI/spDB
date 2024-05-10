@@ -30,14 +30,18 @@ class TestLmdbUtils(unittest.TestCase):
         self.assertEqual(metadata_db_path, self.lmdb_metadata_path)
 
     def test_002__add_items_to_lmdb__vectors(self):
-        lmdb_utils.add_items_to_lmdb(self.lmdb_uncompressed_vectors_path, self.vectors, self.ids, encode_fn=np.ndarray.tobytes)
+        lmdb_utils.add_items_to_lmdb(
+            self.lmdb_uncompressed_vectors_path, self.vectors, self.ids, encode_fn=np.ndarray.tobytes, LMDB_MAP_SIZE=1*1024*1024*1024
+        )
 
         # Make sure there are 30,000 items in the lmdb
         db_count = lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
         self.assertEqual(db_count, 30_000)
     
     def test_003__add_items_to_lmdb__metadata(self):
-        lmdb_utils.add_items_to_lmdb(self.lmdb_metadata_path, self.metadata, self.ids, encode_fn=str.encode)
+        lmdb_utils.add_items_to_lmdb(
+            self.lmdb_metadata_path, self.metadata, self.ids, encode_fn=str.encode, LMDB_MAP_SIZE=1*1024*1024*1024
+        )
 
         # Make sure there are 30,000 items in the lmdb
         db_count = lmdb_utils.get_db_count(self.lmdb_metadata_path)
@@ -59,8 +63,8 @@ class TestLmdbUtils(unittest.TestCase):
 
     def test_006__remove_from_lmdb(self):
         ids = [0, 1, 2]
-        lmdb_utils.remove_from_lmdb(self.lmdb_uncompressed_vectors_path, ids)
-        lmdb_utils.remove_from_lmdb(self.lmdb_metadata_path, ids)
+        lmdb_utils.remove_from_lmdb(self.lmdb_uncompressed_vectors_path, ids, LMDB_MAP_SIZE=1*1024*1024*1024)
+        lmdb_utils.remove_from_lmdb(self.lmdb_metadata_path, ids, LMDB_MAP_SIZE=1*1024*1024*1024)
 
         db_count = lmdb_utils.get_db_count(self.lmdb_uncompressed_vectors_path)
         self.assertEqual(db_count, 29_997)

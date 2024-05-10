@@ -11,9 +11,6 @@ FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from spdb.spdb import spDB, load_db
-from spdb.utils import lmdb_utils
-
-lmdb_utils.MAP_SIZE = 10 * 1024 * 1024 * 1024  # set testing map size to 10 GB
 
 
 def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, gt_k: int) -> tuple[float, float, list]:
