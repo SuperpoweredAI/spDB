@@ -25,7 +25,7 @@ class TestLRUCache(unittest.TestCase):
     flat_faiss_index = faiss.IndexIDMap(flat_faiss_index)
 
     def setUp(self):
-        self.cache = LRUCache(200 * 1024 * 1024) # 200 MB
+        self.cache = LRUCache(100 * 1024 * 1024) # 200 MB
         self.training_params = {
             'pca_dimension': 256,
             'opq_dimension': 128,
@@ -38,14 +38,14 @@ class TestLRUCache(unittest.TestCase):
             "cache_test_db_2": "complete",
             "cache_test_db_3": "untrained"
         }
-        self.random_vectors, self.random_text = generate_random_vectors_with_text(30000, 768)
+        self.random_vectors, self.random_text = generate_random_vectors_with_text(15000, 768)
         
     
     def test_001__add_to_cache(self):
 
         db_name = "cache_test_db"
         db = spDB(name=db_name, vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=int(0.25*1024*1024*1024))
         
         # Add an item to the cache
         self.cache.put(db_name, db)
@@ -60,12 +60,10 @@ class TestLRUCache(unittest.TestCase):
         db = load_db(db_name)
         self.cache.put(db_name, db)
         
-        num_vectors = 30000
+        num_vectors = 15000
         vector_dimension = 768
         random_vectors = self.random_vectors.tolist()
         
-        #add_data = [(random_vectors[i], {"text": self.random_text[i]}) for i in range(len(random_vectors))]
-        #db.add(add_data)
         batch_size = 1000
         for i in range(0, len(random_vectors), batch_size):
             data = []
@@ -96,7 +94,7 @@ class TestLRUCache(unittest.TestCase):
 
         # Create a couple more DBs and add 30,000 vectors to each in order to get above 200MB
         db = spDB(name="cache_test_db_2", vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=int(0.25*1024*1024*1024))
         
         # Add the db to the cache
         self.cache.put("cache_test_db_2", db)
@@ -128,7 +126,7 @@ class TestLRUCache(unittest.TestCase):
 
         # Create another DB
         db = spDB(name="cache_test_db_3", vector_dimension=768,
-            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=1*1024*1024*1024)
+            max_memory_usage=1000 * 1024 * 1024, LMDB_MAP_SIZE=int(0.25*1024*1024*1024))
         
         # Add the db to the cache
         self.cache.put("cache_test_db_3", db)
