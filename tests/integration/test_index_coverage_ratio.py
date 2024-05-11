@@ -11,7 +11,8 @@ from spdb.spdb import spDB
 
 class TestIndexCoverageRatio(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.db_name = "index_coverage_ratio_eval_test"
         self.pca_dimension = 256
         self.opq_dimension = 128
@@ -20,10 +21,7 @@ class TestIndexCoverageRatio(unittest.TestCase):
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
         self.db = spDB(self.db_name)
     
-    def tear_down(self):
-        self.db.delete()
-    
-    def test__index_coverage_ratio(self):
+    def test__001_index_coverage_ratio(self):
 
         # Test that the index coverage ratio is 0 before adding any vectors
         coverage_ratio = self.db.trained_index_coverage_ratio
@@ -58,8 +56,9 @@ class TestIndexCoverageRatio(unittest.TestCase):
         num_trained_vectors_removed = self.db.num_trained_vectors_removed
         self.assertEqual(num_trained_vectors_removed, 30000)
 
-        # Delete the database
-        self.tear_down()
+    @classmethod
+    def tearDownClass(self):
+        self.db.delete()
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,8 @@ from spdb.api.fastapi import app
 
 class TestFastAPI(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.client = TestClient(app)
         self.db_name = "fiqa_test"
         self.pca_dimension = 256
@@ -26,7 +27,7 @@ class TestFastAPI(unittest.TestCase):
         self.query_k = 500
         self.gt_k = 50
 
-        vectors, text, queries, ground_truths = fiqa_test_data()
+        vectors, text, _, _ = fiqa_test_data()
         self.vectors = vectors.tolist()
         self.text = text
     
@@ -55,7 +56,7 @@ class TestFastAPI(unittest.TestCase):
         # when this happens
         response = self.client.post(f"/db/{self.db_name}/train")
         print (response.status_code)
-        #self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         time.sleep(10)
 
         response = self.client.post(f"/db/{self.db_name}/delete")

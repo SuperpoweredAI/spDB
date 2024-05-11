@@ -1,5 +1,4 @@
 import unittest
-import lmdb
 import shutil
 import numpy as np
 import os
@@ -14,14 +13,17 @@ import helpers
 
 class TestLmdbUtils(unittest.TestCase):
 
-    name = "lmdb_test"
-    lmdb_path = os.path.join(os.path.expanduser("~"), '.spdb', name)
-    lmdb_uncompressed_vectors_path = os.path.join(lmdb_path, 'uncompressed_vectors')
-    lmdb_metadata_path = os.path.join(lmdb_path, 'metadata')
+    @classmethod
+    def setUpClass(self):
 
-    vectors, text, _, _ = helpers.fiqa_test_data()
-    ids = [i for i in range(len(vectors))]
-    metadata = [{"text": t} for t in text]
+        self.name = "lmdb_test"
+        self.lmdb_path = os.path.join(os.path.expanduser("~"), '.spdb', self.name)
+        self.lmdb_uncompressed_vectors_path = os.path.join(self.lmdb_path, 'uncompressed_vectors')
+        self.lmdb_metadata_path = os.path.join(self.lmdb_path, 'metadata')
+
+        self.vectors, self.text, _, _ = helpers.fiqa_test_data()
+        self.ids = [i for i in range(len(self.vectors))]
+        self.metadata = [{"text": t} for t in self.text]
 
     def test_001__create_lmdb(self):
         vectors_db_path = lmdb_utils.create_lmdb(self.lmdb_path, 'uncompressed_vectors')
@@ -72,7 +74,8 @@ class TestLmdbUtils(unittest.TestCase):
         db_count = lmdb_utils.get_db_count(self.lmdb_metadata_path)
         self.assertEqual(db_count, 29_997)
 
-    def test_007__tear_down(self):
+    @classmethod
+    def tearDownClass(self):
         shutil.rmtree(self.lmdb_path)
 
 

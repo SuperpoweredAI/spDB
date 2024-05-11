@@ -36,7 +36,8 @@ def evaluate(client, db_name: str, queries: np.ndarray, ground_truths: np.ndarra
 
 class TestFastAPI(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.client = TestClient(app)
         self.db_name = "fiqa_test"
         self.pca_dimension = 256
@@ -251,12 +252,12 @@ class TestFastAPI(unittest.TestCase):
         num_vectors = db_info["num_vectors"]
         self.assertEqual(n_total, 20000)
         self.assertEqual(num_vectors, 20000)
-        
+
     
-    ### Tear down ###
-    def test__003_tear_down(self):
-        new_db_name = "fiqa_test_remove"
-        response = self.client.post(f"/db/{new_db_name}/delete")
+    @classmethod
+    def tearDownClass(self):
+        db_name = "fiqa_test_remove"
+        response = self.client.post(f"/db/{db_name}/delete")
         # This can fail since the DB should have already deleted, so we can't assert a status
         # But it's fine if it fails, since we just want to make sure the DB is deleted
 
