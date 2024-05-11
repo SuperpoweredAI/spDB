@@ -1,9 +1,13 @@
 """ Test for a small spDB """
-
 import numpy as np
 import unittest
+import os
+import sys
 
 import helpers
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from spdb.spdb import spDB
 
@@ -31,14 +35,15 @@ def evaluate(db, queries: np.ndarray, ground_truths: np.ndarray, query_k: int, g
 
 class TestSmallSpdbEvaluation(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.db_name = "small_spdb_test"
         self.query_k = 500
         self.gt_k = 50
-        self.db = spDB(self.db_name)
+        self.db = spDB(self.db_name, LMDB_MAP_SIZE=1*1024*1024*1024)
         self.vectors, self.text, self.queries, self.ground_truths = helpers.fiqa_test_data()
     
-    def test__small_eval(self):
+    def test__001_small_db_eval(self):
         vectors = self.vectors[0:2500]
         text = self.text[0:2500]
         data = []
@@ -75,4 +80,10 @@ class TestSmallSpdbEvaluation(unittest.TestCase):
         # Make sure the unique ids are the same length as the gt_k
         self.assertTrue(all([len(x) == self.gt_k for x in all_unique_ids]))
 
+    @classmethod
+    def tearDownClass(self):
         self.db.delete()
+
+
+if __name__ == "__main__":
+    unittest.main()

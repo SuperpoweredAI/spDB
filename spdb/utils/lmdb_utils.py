@@ -5,8 +5,11 @@ import json
 from typing import Callable
 
 
-MAP_SIZE = 1024 * 1024 * 1024 * 1024  # 1TB
-
+"""try:
+    MAP_SIZE = int(os.environ["LMDB_MAP_SIZE"]) # 100 * 1024 * 1024 * 1024 # 100GB
+except KeyError:
+    MAP_SIZE = 100 * 1024 * 1024 * 1024 # 100GB
+print ("MAP_SIZE", MAP_SIZE)"""
 
 def create_lmdb(lmdb_path: str, db_name: str) -> str:
     # Create the LMDB for the vectors
@@ -17,9 +20,9 @@ def create_lmdb(lmdb_path: str, db_name: str) -> str:
     return db_path
 
 
-def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable) -> None:
+def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable, LMDB_MAP_SIZE: int = 100*1024*1024*1024) -> None:
     # Add the text to LMDB
-    env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
+    env = lmdb.open(db_path, map_size=LMDB_MAP_SIZE)
     with env.begin(write=True) as txn:
         for i, item in enumerate(items):
             if isinstance(item, dict):
@@ -29,9 +32,9 @@ def add_items_to_lmdb(db_path: str, items: list, ids: list, encode_fn: Callable)
     # TODO: handle the case where the text upload fails
 
 
-def remove_from_lmdb(db_path: str, ids: list):
+def remove_from_lmdb(db_path: str, ids: list, LMDB_MAP_SIZE: int = 100*1024*1024*1024):
     # remove the vectors to the LMDB
-    env = lmdb.open(db_path, map_size=MAP_SIZE) # 1TB
+    env = lmdb.open(db_path, map_size=LMDB_MAP_SIZE)
     ids_deleted = []
     with env.begin(write=True) as txn:
         for id in ids:
@@ -86,7 +89,11 @@ def get_lmdb_metadata_by_ids(metadata_lmdb_path: str, ids: list) -> list:
 
 
 def get_lmdb_vectors_by_ids(uncompressed_vectors_lmdb_path: str, ids: list) -> np.ndarray:
-    env = lmdb.open(uncompressed_vectors_lmdb_path)
+    try:
+        env = lmdb.open(uncompressed_vectors_lmdb_path)
+    except FileNotFoundError as e:
+        print("error", e)
+        return None
     # Get the ids from the LMDB
     with env.begin() as txn:
         vectors = []

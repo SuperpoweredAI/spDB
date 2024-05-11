@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from spdb.spdb import load_db
-from spdb.utils import check_is_flat_index
+from spdb.utils import faiss_utils
 
 class LRUCache:
     def __init__(self, max_memory_usage):
@@ -113,7 +113,7 @@ def estimate_memory_usage(db):
     n_total = db.faiss_index.ntotal
 
     # Case where the index is a flat index
-    is_flat_index = check_is_flat_index(db.faiss_index)
+    is_flat_index = faiss_utils.check_is_flat_index(db.faiss_index)
     if is_flat_index:
         memory_usage = n_total * vector_dimension * 4 + 240090 # There is an extra 240,090 bytes of overhead for the index
         return memory_usage

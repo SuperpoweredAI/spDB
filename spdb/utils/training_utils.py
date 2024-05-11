@@ -1,5 +1,6 @@
 import numpy as np
-from . import params
+from spdb.utils.faiss_utils import check_is_flat_index
+from spdb.train import training_params
 
 def get_num_clusters(num_vectors: int) -> int:
     # Get the number of clusters to use for the IVF index, based on the number of vectors
@@ -54,12 +55,6 @@ def create_index_factory_parameter_string(pca_dimension: int, opq_dimension: int
     index_factory_parameter_string = ','.join(index_factory_parameters)
     return index_factory_parameter_string
 
-def create_faiss_index_ids(max_id: int, num_new_vectors: int) -> list:
-    # Create a sequential list of IDs for the new vectors
-    # The IDs start at max_id + 1 and go up to max_id + num_new_vectors
-    new_ids = range(max_id + 1, max_id + num_new_vectors + 1)
-    return new_ids
-
 def get_training_memory_usage(vector_dimension: int, num_vectors: int) -> int:
     # 1M 768 dimension vectors uses ~10GB of memory
     memory_usage = int(num_vectors * vector_dimension * 4 * 3) # 4 bytes per float, with a 3x multiplier for overhead
@@ -91,7 +86,7 @@ def is_two_level_clustering_optimal(max_memory_usage: int, vector_dimension: int
     else:
         # We can use the subsampling method
         return False
-    
+
 def get_default_faiss_params(vector_dimension: int) -> dict:
     if vector_dimension < 150:
         return {
@@ -149,25 +144,11 @@ def calculate_trained_index_coverage_ratio(num_vectors_trained_on: int, num_new_
 
     return coverage_ratio
 
-def check_is_flat_index(index) -> bool:
-
-    if (str(type(index)) == "<class 'faiss.swigfaiss_avx2.IndexIDMap'>" or str(type(index)) == "<class 'faiss.swigfaiss.IndexIDMap'>"):
-        return True
-    else:
-        return False
-
-def calculate_cosine_similarity(query_vector: np.ndarray, comparison_vectors: np.ndarray) -> np.ndarray:
-    all_cosine_similarity = []
-    for vector in comparison_vectors:
-        cosine_similarity = np.dot(query_vector, vector)
-        all_cosine_similarity.append(cosine_similarity)
-    return all_cosine_similarity
-
 
 def check_needs_initial_training(db_name: str, num_vectors: int, faiss_index, operations: dict) -> bool:
     
     # If there are fewer than 50k vectors, we don't need to train
-    if num_vectors < params.num_vector_training_cutoff:
+    if num_vectors < training_params.num_vector_training_cutoff:
         #print ("num vectors is less than 50k", num_vectors)
         return False
     
@@ -190,11 +171,11 @@ def check_needs_initial_training(db_name: str, num_vectors: int, faiss_index, op
 def check_needs_training(db_name: str, num_vectors: int, operations: dict, index_coverage_ratio: float) -> bool:
     
     # If there are fewer than 50k vectors, we don't need to train
-    if num_vectors < params.num_vector_training_cutoff:
+    if num_vectors < training_params.num_vector_training_cutoff:
         print ("num vectors is less than 50k", num_vectors)
         return False
     
-    if index_coverage_ratio > params.trained_index_coverage_ratio_cutoff:
+    if index_coverage_ratio > training_params.trained_index_coverage_ratio_cutoff:
         print ("index coverage ratio is greater than 0.5", index_coverage_ratio)
         return False
 
@@ -210,10 +191,10 @@ def check_needs_training(db_name: str, num_vectors: int, operations: dict, index
 def get_training_params(max_memory_usage: int, vector_dimension: int, num_vectors: int) -> dict:
     
     use_two_level_clustering = is_two_level_clustering_optimal(max_memory_usage, vector_dimension, num_vectors)
-    pca_dimension = params.pca_dimension
-    omit_opq = params.omit_opq
-    opq_dimension = params.opq_dimension
-    compressed_vector_bytes = params.compressed_vector_bytes
+    pca_dimension = training_params.pca_dimension
+    omit_opq = training_params.omit_opq
+    opq_dimension = training_params.opq_dimension
+    compressed_vector_bytes = training_params.compressed_vector_bytes
 
     return {
         "use_two_level_clustering": use_two_level_clustering,

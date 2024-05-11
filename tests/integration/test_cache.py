@@ -13,7 +13,7 @@ sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from helpers import fiqa_test_data
 
-from api.fastapi import app
+from spdb.api.fastapi import app
 
 
 def generate_random_vectors_with_text(N, D):
@@ -24,7 +24,8 @@ def generate_random_vectors_with_text(N, D):
 
 class TestAutoTrain(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.client = TestClient(app)
         self.db_names = ["fiqa_test_1", "fiqa_test_2"]
         self.pca_dimension = 256
@@ -251,9 +252,9 @@ class TestAutoTrain(unittest.TestCase):
         print ("cache_keys test 006", cache_keys)
         self.assertTrue(len(cache_keys) == 2)
         self.assertTrue("fiqa_test_2" not in cache_keys)
-
-
-    def test__007_tear_down(self):
+    
+    @classmethod
+    def tearDownClass(self):
         for db_name in self.db_names:
             response = self.client.post(f"/db/{db_name}/delete")
         

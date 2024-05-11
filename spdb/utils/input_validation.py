@@ -1,6 +1,6 @@
 import numpy as np
 import re
-from . import utils
+from spdb.utils import training_utils
 
 
 def validate_database_name(name: str) -> tuple[bool, str]:
@@ -100,7 +100,7 @@ def validate_add(data, vector_dimension: int, num_vectors: int, max_memory_usage
             
     if is_flat_index:
         # Make sure adding the vectors won't exceed the max memory usage
-        new_memory_usage = utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))
+        new_memory_usage = training_utils.get_training_memory_usage(vectors[0].shape[0], num_vectors + len(vectors))
         if (max_memory_usage is not None and new_memory_usage > max_memory_usage):
             return [], [], False, "Adding these vectors will exceed the max memory usage. Max memory usage: " + str(max_memory_usage) + " New memory usage: " + str(new_memory_usage)
     

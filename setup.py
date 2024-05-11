@@ -8,28 +8,25 @@ def read(fname):
 
 
 setuptools.setup(
-    name="superpowered-sdk",
+    name="spdb",
     version=read("VERSION"),
     description="spDB - A super memory-efficient vector database",
-    license="Proprietary License",                                # TODO: what license do we want?
+    license="MIT License",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
-    url="https://superpowered.ai",
-    # project_urls={
-    #     "Homepage": "https://superpowered.ai",
-    #     "Documentation": "https://superpowered.ai/docs",
-    #     "Contact": "https://superpowered.ai/contact/",
-    #     "End-User License Agreement": "https://superpowered.ai/api-user-agreement/"
-    # },
+    url="https://github.com/SuperpoweredAI/spDB",
+    project_urls={
+        "Homepage": "https://github.com/SuperpoweredAI/spDB",
+        "Documentation": "https://github.com/SuperpoweredAI/spDB",
+        "Contact": "https://github.com/SuperpoweredAI/spDB",
+    },
     author="superpowered",
-    author_email="justin@superpowered.ai",
+    author_email="nick@superpowered.ai, zach@superpowered.ai, justin@superpowered.ai",
     keywords="Superpowered AI Knowledge base as a service for LLM applications",
     packages=["spdb"],
-    # package_data={"superpowered": ["errors.json"]},
-    # package_dir={"": "superpowered"},
     install_requires=read("requirements.txt"),
-    # include_package_data=True,
-    python_requires=">=3.6",
+    include_package_data=True,
+    python_requires=">=3.9",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",

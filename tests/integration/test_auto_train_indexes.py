@@ -9,13 +9,14 @@ sys.path.append(os.path.join(FILE_PATH, '../../'))
 
 from helpers import fiqa_test_data
 
-from api.fastapi import app
+from spdb.api.fastapi import app
 
 
 
 class TestAutoTrain(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
         self.client = TestClient(app)
         self.db_names = ["fiqa_test_1", "fiqa_test_2"]
         self.pca_dimension = 256
@@ -186,12 +187,10 @@ class TestAutoTrain(unittest.TestCase):
             else:
                 tries += 1
                 time.sleep(20)
-
     
-    # Call the auto train endpoint
-    def test__005_tear_down(self):
-        print ("deleting dbs")
 
+    @classmethod
+    def tearDownClass(self):
         for db_name in self.db_names:
             response = self.client.post(f"/db/{db_name}/delete")
 

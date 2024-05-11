@@ -3,9 +3,8 @@ import logging
 import numpy as np
 import time
 
-from . import two_level_clustering
-from . import lmdb_utils
-from . import utils
+from spdb.train import two_level_clustering
+from spdb.utils import lmdb_utils, training_utils
 
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,8 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
 
     # Get the parameters for training the index
     if num_clusters is None:
-        num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
+        num_clusters = training_utils.get_num_clusters(num_vectors)
+    index_factory_parameter_string = training_utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     logger.info(f'index_factory_parameter_string: {index_factory_parameter_string}')
 
     # create the index
@@ -38,7 +37,7 @@ def train_with_two_level_clustering(uncompressed_vectors_lmdb_path: str, vector_
     logger.info(f'added {index.ntotal} vectors to index')
 
     # Set the n_probe parameter
-    n_probe = utils.get_n_probe(num_clusters)
+    n_probe = training_utils.get_n_probe(num_clusters)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
 
     return index, vector_ids
@@ -53,12 +52,12 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
 
     # Get the parameters for training the index
     if num_clusters is None:
-        num_clusters = utils.get_num_clusters(num_vectors)
-    index_factory_parameter_string = utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
+        num_clusters = training_utils.get_num_clusters(num_vectors)
+    index_factory_parameter_string = training_utils.create_index_factory_parameter_string(pca_dimension, opq_dimension, compressed_vector_bytes, num_clusters, vector_dimension, omit_opq)
     logger.info(f'index_factory_parameter_string: {index_factory_parameter_string}')
 
     # Get a subset of the vectors
-    memory_usage = utils.get_training_memory_usage(
+    memory_usage = training_utils.get_training_memory_usage(
         vector_dimension, num_vectors)
     logger.info(f'memory_usage: {memory_usage}')
     # Define the percentage to train on based off the max memory usage and memory usage
@@ -72,6 +71,10 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
     with lmdb_lock:
         vectors = lmdb_utils.get_lmdb_vectors_by_ids(
             uncompressed_vectors_lmdb_path, random_indices)
+    
+    if vectors is None:
+        logger.debug("returning None, None")
+        return None, None
 
     # create the index
     index = faiss.index_factory(
@@ -80,10 +83,15 @@ def train_with_subsampling(uncompressed_vectors_lmdb_path: str, vector_dimension
 
     index = add_vectors_to_faiss(
         uncompressed_vectors_lmdb_path, index, vector_ids, vector_dimension, max_memory_usage, lmdb_lock)
-    logger.info(f'added {index.ntotal} vectors to index')
+    if index is not None:
+        logger.info(f'added {index.ntotal} vectors to index')
+
+    if index is None:
+        logger.debug("returning None, None")
+        return None, None
 
     # Set the n_probe parameter (I think it makes sense here since n_probe is dependent on num_clusters)
-    n_probe = utils.get_n_probe(num_clusters)
+    n_probe = training_utils.get_n_probe(num_clusters)
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", n_probe)
 
     return index, vector_ids
@@ -106,7 +114,7 @@ def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.Index
     
     num_vectors = len(vector_ids)
     # Add all of the vectors to the index. We need to know the number of batches to do this in
-    num_batches = utils.get_num_batches(num_vectors, vector_dimension, max_memory_usage)
+    num_batches = training_utils.get_num_batches(num_vectors, vector_dimension, max_memory_usage)
     # Calculate the number of vectors per batch
     num_per_batch = np.ceil(num_vectors / num_batches).astype(int)
     for i in range(num_batches):
@@ -115,7 +123,12 @@ def add_vectors_to_faiss(uncompressed_vectors_lmdb_path: str, index: faiss.Index
         with lmdb_lock:
             vectors = lmdb_utils.get_lmdb_vectors_by_ids(
                 uncompressed_vectors_lmdb_path, batch_ids)
-        # Add the vectors to the index
+        # Make sure the vectors are not None. This happens if the lmdb folder is not found
+        if vectors is None:
+            logger.debug("returning None")
+            return None
+        
+        # Add the vectors to the index         
         index.add_with_ids(vectors, batch_ids)
 
     return index
